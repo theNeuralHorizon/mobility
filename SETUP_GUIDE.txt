@@ -1,0 +1,402 @@
+================================================================================
+UGV AUTONOMOUS NAVIGATION CHALLENGE - COMPLETE SETUP GUIDE
+================================================================================
+
+PREREQUISITES:
+- Windows 11 with WSL2 enabled
+- Ubuntu 22.04 installed in WSL2
+
+================================================================================
+STEP 1: INSTALL WSL2 (if not already done)
+================================================================================
+
+Open PowerShell as Administrator:
+
+    wsl --install -d Ubuntu-22.04
+
+Restart your PC if prompted.
+Set your username and password when Ubuntu first launches.
+
+================================================================================
+STEP 2: OPEN WSL2 TERMINAL
+================================================================================
+
+Open PowerShell and run:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+
+Replace <your_username> with whatever you set during install (e.g., kshit).
+
+================================================================================
+STEP 3: INSTALL ROS 2 HUMBLE + DEPENDENCIES
+================================================================================
+
+Run these commands one by one inside WSL2:
+
+    sudo apt update && sudo apt upgrade -y
+
+    # Add ROS 2 repository
+    sudo apt install -y software-properties-common
+    sudo add-apt-repository universe
+    sudo apt update
+    sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+      -o /usr/share/keyrings/ros-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+      http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | \
+      sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+    sudo apt update
+
+    # Install ROS 2 Humble Desktop (includes RViz2)
+    sudo apt install -y ros-humble-desktop
+
+    # Install Gazebo Ignition (Fortress)
+    sudo apt install -y ros-humble-ros-gz
+
+    # Install Nav2 (navigation stack)
+    sudo apt install -y ros-humble-navigation2 ros-humble-nav2-bringup
+
+    # Install additional dependencies
+    sudo apt install -y \
+      ros-humble-twist-mux \
+      ros-humble-teleop-twist-keyboard \
+      ros-humble-robot-state-publisher \
+      ros-humble-joint-state-publisher \
+      ros-humble-xacro \
+      python3-colcon-common-extensions \
+      python3-rosdep \
+      python3-pip \
+      libspdlog-dev
+
+    # Install OpenCV for ArUco detection
+    pip3 install opencv-contrib-python
+
+    # Initialize rosdep
+    sudo rosdep init 2>/dev/null || true
+    rosdep update
+
+    # Source ROS 2 in every terminal automatically
+    echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+    source ~/.bashrc
+
+================================================================================
+STEP 4: COPY WORKSPACE TO LINUX FILESYSTEM
+================================================================================
+
+IMPORTANT: Never build on /mnt/c/ (Windows filesystem). Always use ~/
+
+    cp -r /mnt/c/codespace/mobility ~/mobility_ws
+
+If ~/mobility_ws already exists and you need a clean copy:
+
+    rm -rf ~/mobility_ws
+    mkdir ~/mobility_ws
+    cp -r /mnt/c/codespace/mobility/* ~/mobility_ws/
+
+Make sure there is NO nested mobility/ folder inside:
+
+    ls ~/mobility_ws/
+    # Should show: src/  setup_env.sh  README.md  (and maybe .claude/)
+    # Should NOT show: mobility/
+
+If you see a nested mobility/ folder, delete it:
+
+    rm -rf ~/mobility_ws/mobility
+
+Also remove any stale build artifacts:
+
+    rm -rf ~/mobility_ws/build ~/mobility_ws/install ~/mobility_ws/log
+
+================================================================================
+STEP 5: BUILD THE WORKSPACE
+================================================================================
+
+    cd ~/mobility_ws
+    source /opt/ros/humble/setup.bash
+    colcon build --symlink-install
+
+Expected output: All packages should finish successfully.
+If you see errors about spdlog, run:
+
+    sudo apt install -y libspdlog-dev
+
+Then rebuild:
+
+    colcon build --symlink-install
+
+After building, source the workspace:
+
+    source ~/mobility_ws/install/setup.bash
+
+Add this to bashrc so it auto-sources:
+
+    echo "source ~/mobility_ws/install/setup.bash" >> ~/.bashrc
+
+================================================================================
+STEP 6: FIX RENDER ENGINE FOR WSL2
+================================================================================
+
+WSL2 does not support ogre2. Change all world files to use ogre:
+
+    sed -i 's/ogre2/ogre/g' ~/mobility_ws/src/mini_r1_v1_description/worlds/empty.sdf
+    sed -i 's/ogre2/ogre/g' ~/mobility_ws/src/mini_r1_v1_description/worlds/warehouse.sdf
+    sed -i 's/ogre2/ogre/g' ~/mobility_ws/src/ugv_nav_bringup/worlds/arena.sdf
+
+Rebuild after changes:
+
+    cd ~/mobility_ws && colcon build --symlink-install
+
+Also set software rendering (required for WSL2):
+
+    echo "export LIBGL_ALWAYS_SOFTWARE=1" >> ~/.bashrc
+    source ~/.bashrc
+
+================================================================================
+STEP 7: LAUNCH GAZEBO (3-TERMINAL METHOD)
+================================================================================
+
+The ros2 launch command times out because Gazebo is slow with software
+rendering. Use this 3-terminal method instead.
+
+--- TERMINAL 1: Start Gazebo ---
+
+Open PowerShell, run:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+
+Then inside WSL2:
+
+    source ~/.bashrc
+    export LIBGL_ALWAYS_SOFTWARE=1
+    source ~/mobility_ws/install/setup.bash
+
+    # For warehouse world:
+    ign gazebo -r --render-engine ogre \
+      ~/mobility_ws/install/mini_r1_v1_description/share/mini_r1_v1_description/worlds/warehouse.sdf
+
+    # Or for empty world:
+    ign gazebo -r --render-engine ogre \
+      ~/mobility_ws/install/mini_r1_v1_description/share/mini_r1_v1_description/worlds/empty.sdf
+
+WAIT until the Gazebo 3D window appears. This takes 1-3 minutes with
+software rendering. Do NOT proceed until you see the 3D view.
+
+--- TERMINAL 2: Robot State Publisher ---
+
+Open another PowerShell, run:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+
+Then:
+
+    source ~/.bashrc
+    export LIBGL_ALWAYS_SOFTWARE=1
+    source ~/mobility_ws/install/setup.bash
+
+    ros2 launch mini_r1_v1_description rsp.launch.py use_sim_time:=true
+
+--- TERMINAL 3: Spawn Robot + Bridge ---
+
+Open another PowerShell, run:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+
+Then:
+
+    source ~/.bashrc
+    export LIBGL_ALWAYS_SOFTWARE=1
+    source ~/mobility_ws/install/setup.bash
+
+    # Spawn the robot into Gazebo
+    ros2 run ros_gz_sim create -topic robot_description -name mini_r1 -x 0.0 -y 0.0 -z 0.07
+
+Wait until the robot appears in Gazebo (small vehicle on the ground).
+Then start the bridge:
+
+    ros2 run ros_gz_bridge parameter_bridge \
+      --ros-args -p config_file:=$(ros2 pkg prefix mini_r1_v1_gz)/share/mini_r1_v1_gz/config/ros_gz_bridge.yaml
+
+--- TERMINAL 4: Teleop (Drive Robot) ---
+
+Open another PowerShell, run:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+
+Then:
+
+    source ~/.bashrc
+    source ~/mobility_ws/install/setup.bash
+
+    ros2 run teleop_twist_keyboard teleop_twist_keyboard
+
+KEEP THIS TERMINAL FOCUSED when pressing keys:
+
+    i = forward
+    , = backward (comma key)
+    j = turn left
+    l = turn right
+    k = stop
+    u = forward + left
+    o = forward + right
+    q/z = increase/decrease speed
+
+================================================================================
+STEP 8: VERIFY TOPICS ARE WORKING
+================================================================================
+
+Open a 5th terminal:
+
+    wsl -d Ubuntu-22.04 -u <your_username>
+    source ~/.bashrc
+    source ~/mobility_ws/install/setup.bash
+
+Check all topics:
+
+    ros2 topic list
+
+You should see:
+    /clock
+    /cmd_vel
+    /cmd_vel_stamped
+    /joint_states
+    /r1_mini/camera/camera_info
+    /r1_mini/camera/image_raw
+    /r1_mini/imu
+    /r1_mini/lidar
+    /r1_mini/odom
+    /robot_description
+    /tf
+    /tf_static
+
+Check if lidar is publishing:
+
+    ros2 topic hz /r1_mini/lidar
+
+Check if camera is publishing:
+
+    ros2 topic hz /r1_mini/camera/image_raw
+
+Check odometry:
+
+    ros2 topic echo /r1_mini/odom --once
+
+================================================================================
+STEP 9: GAZEBO CAMERA CONTROLS
+================================================================================
+
+Inside the Gazebo 3D window:
+
+    Right-click + drag     = Orbit / Rotate camera
+    Middle-click + drag    = Pan camera
+    Scroll wheel           = Zoom in/out
+    Right-click robot      = "Move To" (focus on robot)
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+PROBLEM: "chmod: Operation not permitted"
+CAUSE: You're on the Windows filesystem (/mnt/c/)
+FIX: Work in ~/mobility_ws/ on the Linux filesystem
+
+PROBLEM: "Duplicate package names"
+CAUSE: Nested mobility/ folder inside the workspace
+FIX: rm -rf ~/mobility_ws/mobility
+
+PROBLEM: "spdlog not found"
+FIX: sudo apt install -y libspdlog-dev
+
+PROBLEM: Gazebo crashes with "Segmentation fault" or ogre2 errors
+FIX: Use --render-engine ogre (not ogre2)
+     export LIBGL_ALWAYS_SOFTWARE=1
+
+PROBLEM: "Requesting list of world names" loops forever
+CAUSE: Gazebo too slow to start; spawner times out
+FIX: Use the 3-terminal method (Step 7 above)
+
+PROBLEM: "Package not found"
+FIX: source ~/mobility_ws/install/setup.bash
+
+PROBLEM: WSL opens as root (# prompt instead of $ prompt)
+FIX: Use  wsl -d Ubuntu-22.04 -u <your_username>
+
+PROBLEM: Robot not moving with teleop
+CHECK: 1. Is the robot spawned in Gazebo? (visible in 3D view)
+       2. Is the bridge running? (Terminal 3)
+       3. Is teleop terminal focused when pressing keys?
+       4. Run: ros2 topic echo /cmd_vel  (press i, see messages?)
+
+PROBLEM: White/washed out rendering
+CAUSE: Software rendering with ogre lacks proper lighting
+FIX: This is cosmetic only. Physics and sensors still work.
+     Wait 2-5 minutes for textures to load.
+
+================================================================================
+WORKSPACE STRUCTURE
+================================================================================
+
+~/mobility_ws/
+  src/
+    mini_r1_v1_description/     <-- Robot model (URDF, meshes, worlds)
+      urdf/
+        mini_r1.urdf.xacro      <-- Master robot file
+        robot_core.xacro         <-- Chassis + wheels
+        sensors.xacro            <-- Camera + IMU
+        lidar.xacro              <-- LiDAR sensor
+        gazebo_control.xacro     <-- Differential drive plugin
+      meshes/                    <-- 3D mesh files (STL)
+      worlds/
+        empty.sdf                <-- Blank world
+        warehouse.sdf            <-- Demo warehouse
+      launch/
+        rsp.launch.py            <-- Robot State Publisher
+      config/
+        joint_names_MINI_R1_v1.yaml
+
+    mini_r1_v1_gz/              <-- Gazebo simulation launcher
+      launch/
+        sim.launch.py            <-- Main sim launch file
+      config/
+        ros_gz_bridge.yaml       <-- Topic bridge config
+
+    ugv_nav_bringup/            <-- Navigation bringup (we created)
+      launch/
+        challenge.launch.py      <-- Full challenge launcher
+      config/
+        nav2_params.yaml         <-- Nav2 configuration (map-less)
+      worlds/
+        arena.sdf                <-- Challenge arena (to be built)
+
+    ugv_perception/             <-- Perception nodes (we created)
+      ugv_perception/
+        aruco_detector.py        <-- ArUco marker detector
+        sign_detector.py         <-- Directional sign detector
+
+================================================================================
+NEXT STEPS (AFTER SETUP IS WORKING)
+================================================================================
+
+1. Build the challenge arena (arena.sdf)
+   - Walls, zones, intersections, maze corridors
+   - Place 4 ArUco marker models
+   - Place 6 directional sign models
+   - Add traps (loop, false goal, dead ends)
+
+2. Implement sign detector
+   - Color segmentation or template matching
+   - Publishes to /ugv/sign/direction
+
+3. Build behavior/decision node (mission_controller.py)
+   - State machine: EXPLORING -> SIGN_FOLLOW -> MARKER_APPROACH -> GOAL_SEEK
+   - Recovery behaviors (spin, backtrack, escape)
+   - Loop detection using position history
+
+4. Tune Nav2 parameters
+   - Costmap resolution, inflation radius
+   - Planner speeds, sim_time
+
+5. End-to-end autonomous run
+   - All 4 markers detected
+   - Correct goal zone reached
+   - No collisions, no getting stuck
+
+================================================================================
