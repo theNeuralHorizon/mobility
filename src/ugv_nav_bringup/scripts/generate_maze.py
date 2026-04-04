@@ -1,64 +1,52 @@
-"""Generate a guaranteed-solvable maze arena SDF for Gazebo.
+"""Generate a hand-crafted maze arena SDF for the UGV Navigation Challenge.
 
-Uses DFS to carve passages through a grid, ensuring every cell is
-reachable from the start. Then adds challenge elements (ArUco markers,
-signs, zones, obstacles, traps).
+Layout: 6 cols x 5 rows, each cell 2.0m x 2.0m (total 12m x 10m).
+All corridors are 1.85m wide (2.0 - 0.15 wall thickness).
+Robot is ~0.3m wide, so 1.85m corridors give plenty of clearance.
 
 Output: overwrites arena.sdf in the worlds/ directory.
 """
 
-import random
 import os
 
-random.seed(42)  # Reproducible maze
+COLS, ROWS = 6, 5
+CELL = 2.0
+WALL_THICK = 0.15
+WALL_HEIGHT = 1.0
 
-# Grid config
-COLS, ROWS = 8, 6
-CELL = 1.5  # meters per cell
-WALL_THICK = 0.20
-WALL_HEIGHT = 1.5
+# ---- Hand-crafted maze layout ------------------------------------------
+# True = wall present, False = opening
+# Horizontal walls: walls_h[r][c] = wall on the SOUTH side of cell (c, r)
+# walls_h[0] = bottom boundary, walls_h[ROWS] = top boundary
 
-# ---- DFS maze generation ------------------------------------------------
+walls_h = [
+    [True,  True,  True,  True,  True,  True],   # r=0 bottom boundary
+    [False, False, True,  False, True,  False],   # r=1
+    [True,  False, False, True,  False, True],    # r=2
+    [False, True,  False, False, True,  False],   # r=3
+    [True,  False, True,  False, False, True],    # r=4
+    [True,  True,  True,  True,  True,  True],    # r=5 top boundary
+]
 
-maze_visited = [[False] * COLS for _ in range(ROWS)]
-walls_h = [[True] * COLS for _ in range(ROWS + 1)]  # horizontal walls
-walls_v = [[True] * (COLS + 1) for _ in range(ROWS)]  # vertical walls
+# Vertical walls: walls_v[r][c] = wall on the WEST side of cell (c, r)
+# walls_v[r][0] = left boundary, walls_v[r][COLS] = right boundary
 
-
-def carve(r: int, c: int) -> None:
-    maze_visited[r][c] = True
-    dirs = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    random.shuffle(dirs)
-    for dr, dc in dirs:
-        nr, nc = r + dr, c + dc
-        if 0 <= nr < ROWS and 0 <= nc < COLS and not maze_visited[nr][nc]:
-            if dr == 1:
-                walls_h[r + 1][c] = False
-            elif dr == -1:
-                walls_h[r][c] = False
-            elif dc == 1:
-                walls_v[r][c + 1] = False
-            elif dc == -1:
-                walls_v[r][c] = False
-            carve(nr, nc)
-
-
-carve(0, 0)
-
-# Add extra openings for multiple paths (loops, alternate routes)
-for r, c, d in [(2, 3, "h"), (3, 5, "h"), (1, 4, "v"), (4, 2, "v"), (3, 7, "v")]:
-    if d == "h" and r <= ROWS:
-        walls_h[r][c] = False
-    elif d == "v" and c <= COLS:
-        walls_v[r][c] = False
-
-# Add walls back for dead-end and loop trap
-walls_h[5][0] = True  # Dead end cap in upper-left
-walls_v[4][6] = True   # Loop trap wall in upper-right
+walls_v = [
+    [True,  False, True,  False, True,  False, True],   # r=0
+    [True,  True,  False, True,  False, False, True],    # r=1
+    [True,  False, True,  False, False, True,  True],    # r=2
+    [True,  True,  False, False, True,  False, True],    # r=3
+    [True,  False, True,  False, True,  False, True],    # r=4
+]
 
 # ---- Print ASCII maze ---------------------------------------------------
 
 print("Maze layout (S=start, G=goal, F=false goal, 0-3=ArUco):")
+labels = {
+    (0, 0): " S ", (0, 5): " G ",
+    (3, 4): " F ",
+    (1, 2): " 0 ", (0, 4): " 1 ", (4, 1): " 2 ", (2, 3): " 3 ",
+}
 for r in range(ROWS - 1, -1, -1):
     line = ""
     for c in range(COLS):
@@ -69,10 +57,6 @@ for r in range(ROWS - 1, -1, -1):
     line = ""
     for c in range(COLS):
         line += "|" if walls_v[r][c] else " "
-        labels = {
-            (0, 0): " S ", (0, 7): " G ", (2, 6): " F ",
-            (0, 2): " 0 ", (0, 5): " 1 ", (5, 3): " 2 ", (2, 4): " 3 ",
-        }
         line += labels.get((r, c), "   ")
     line += "|" if walls_v[r][COLS] else " "
     print(line)
@@ -82,7 +66,7 @@ for c in range(COLS):
 line += "+"
 print(line)
 
-# ---- Generate wall SDF links --------------------------------------------
+# ---- Generate wall collisions and visuals --------------------------------
 
 wall_links: list[str] = []
 wall_visuals: list[str] = []
@@ -93,11 +77,9 @@ def add_wall(
     x: float, y: float, length: float,
     vertical: bool = False, thick: float = WALL_THICK,
 ) -> None:
-    """Add wall collision and visual to the single arena_collision model."""
     global wall_id
     wall_id += 1
     rot = "1.5708" if vertical else "0"
-    # Collision (in the collision link) with surface properties
     wall_links.append(
         f'        <collision name="w{wall_id}">\n'
         f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
@@ -105,36 +87,29 @@ def add_wall(
         f'          <surface><friction><ode/></friction><bounce/><contact/></surface>\n'
         f'        </collision>'
     )
-    # Visual (in the visual link)
     wall_visuals.append(
         f'        <visual name="w{wall_id}">\n'
         f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
         f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
-        f'          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>\n'
+        f'          <material><ambient>0.35 0.35 0.35 1</ambient>'
+        f'<diffuse>0.4 0.4 0.4 1</diffuse></material>\n'
         f'        </visual>'
     )
 
 
-OUTER_THICK = 0.5  # Thick outer walls
-OUTER_PAD = 0.5    # Padding beyond grid
-
-# Outer boundary as 4 simple walls (NOT from DFS grid)
-# These form a solid perimeter with overlapping corners
+# Outer boundary (thick, overlapping corners)
+OUTER_THICK = 0.3
 arena_w = COLS * CELL
 arena_h = ROWS * CELL
-# Bottom wall: full width + padding
-add_wall(arena_w / 2, -OUTER_THICK / 2, arena_w + 2 * OUTER_PAD, thick=OUTER_THICK)
-# Top wall
-add_wall(arena_w / 2, arena_h + OUTER_THICK / 2, arena_w + 2 * OUTER_PAD, thick=OUTER_THICK)
-# Left wall: full height + padding (extends past top/bottom walls)
-add_wall(-OUTER_THICK / 2, arena_h / 2, arena_h + 2 * OUTER_PAD,
+add_wall(arena_w / 2, -OUTER_THICK / 2, arena_w + 1.0, thick=OUTER_THICK)
+add_wall(arena_w / 2, arena_h + OUTER_THICK / 2, arena_w + 1.0, thick=OUTER_THICK)
+add_wall(-OUTER_THICK / 2, arena_h / 2, arena_h + 1.0,
          vertical=True, thick=OUTER_THICK)
-# Right wall
-add_wall(arena_w + OUTER_THICK / 2, arena_h / 2, arena_h + 2 * OUTER_PAD,
+add_wall(arena_w + OUTER_THICK / 2, arena_h / 2, arena_h + 1.0,
          vertical=True, thick=OUTER_THICK)
 
-# Internal walls from DFS grid (skip outer boundary rows/cols)
-for r in range(1, ROWS):  # Skip r=0 and r=ROWS (outer boundary)
+# Internal horizontal walls
+for r in range(1, ROWS):
     y = r * CELL
     c = 0
     while c < COLS:
@@ -142,13 +117,14 @@ for r in range(1, ROWS):  # Skip r=0 and r=ROWS (outer boundary)
             start_c = c
             while c < COLS and walls_h[r][c]:
                 c += 1
-            x_start = start_c * CELL
-            x_end = c * CELL
-            add_wall((x_start + x_end) / 2, y, x_end - x_start + 0.15)
+            x0 = start_c * CELL
+            x1 = c * CELL
+            add_wall((x0 + x1) / 2, y, x1 - x0)
         else:
             c += 1
 
-for c in range(1, COLS):  # Skip c=0 and c=COLS (outer boundary)
+# Internal vertical walls
+for c in range(1, COLS):
     x = c * CELL
     r = 0
     while r < ROWS:
@@ -156,16 +132,62 @@ for c in range(1, COLS):  # Skip c=0 and c=COLS (outer boundary)
             start_r = r
             while r < ROWS and walls_v[r][c]:
                 r += 1
-            y_start = start_r * CELL
-            y_end = r * CELL
-            add_wall(x, (y_start + y_end) / 2, y_end - y_start + 0.15,
-                     vertical=True)
+            y0 = start_r * CELL
+            y1 = r * CELL
+            add_wall(x, (y0 + y1) / 2, y1 - y0, vertical=True)
         else:
             r += 1
 
 print(f"\nGenerated {wall_id} wall segments")
 
-# ---- Build SDF ----------------------------------------------------------
+# ---- Sign model helper ---------------------------------------------------
+
+def sign_model(name: str, x: float, y: float, r: float, g: float, b: float) -> str:
+    """Sign on a post at robot camera height."""
+    return (
+        f'    <model name="{name}"><static>true</static>\n'
+        f'      <pose>{x} {y} 0 0 0 0</pose>\n'
+        f'      <link name="post">\n'
+        f'        <visual name="post"><geometry><cylinder>'
+        f'<radius>0.02</radius><length>0.25</length></cylinder></geometry>\n'
+        f'          <pose>0 0 0.125 0 0 0</pose>\n'
+        f'          <material><ambient>0.3 0.3 0.3 1</ambient>'
+        f'<diffuse>0.3 0.3 0.3 1</diffuse></material>\n'
+        f'        </visual>\n'
+        f'      </link>\n'
+        f'      <link name="sign">\n'
+        f'        <visual name="face"><geometry><box>'
+        f'<size>0.25 0.25 0.01</size></box></geometry>\n'
+        f'          <pose>0 0 0.28 0 0 0</pose>\n'
+        f'          <material><ambient>{r} {g} {b} 1</ambient>'
+        f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
+        f'        </visual>\n'
+        f'      </link>\n'
+        f'    </model>'
+    )
+
+
+def aruco_model(name: str, x: float, y: float, on_wall_y: bool = True) -> str:
+    """ArUco marker on a wall at camera height."""
+    if on_wall_y:
+        pose = f'{x} {y} 0.15 1.5708 0 0'
+    else:
+        pose = f'{x} {y} 0.15 0 1.5708 0'
+    return (
+        f'    <model name="{name}"><static>true</static>\n'
+        f'      <pose>{pose}</pose>\n'
+        f'      <link name="l"><visual name="v"><geometry><box>'
+        f'<size>0.3 0.3 0.01</size></box></geometry>\n'
+        f'        <material><ambient>1 1 1 1</ambient>'
+        f'<diffuse>1 1 1 1</diffuse></material></visual></link>\n'
+        f'    </model>'
+    )
+
+
+# ---- Build SDF -----------------------------------------------------------
+
+# Cell centers: cell(c,r) center = (c*CELL + CELL/2, r*CELL + CELL/2)
+# = (c*2+1, r*2+1)
 
 sdf = f'''<?xml version="1.0" ?>
 <sdf version="1.9">
@@ -175,14 +197,20 @@ sdf = f'''<?xml version="1.0" ?>
       <max_step_size>0.01</max_step_size>
       <real_time_factor>1</real_time_factor>
     </physics>
-    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
-    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-imu-system"
+            name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
       <render_engine>ogre2</render_engine>
     </plugin>
-    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
+    <plugin filename="gz-sim-contact-system"
+            name="gz::sim::systems::Contact"/>
 
     <scene>
       <ambient>0.6 0.6 0.6 1</ambient>
@@ -192,14 +220,14 @@ sdf = f'''<?xml version="1.0" ?>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
-      <pose>6 4 15 0 0 0</pose>
+      <pose>6 5 15 0 0 0</pose>
       <diffuse>0.9 0.9 0.9 1</diffuse>
       <specular>0.3 0.3 0.3 1</specular>
       <direction>-0.5 0.3 -0.9</direction>
     </light>
     <light type="directional" name="fill">
       <cast_shadows>false</cast_shadows>
-      <pose>6 4 12 0 0 0</pose>
+      <pose>6 5 12 0 0 0</pose>
       <diffuse>0.4 0.4 0.4 1</diffuse>
       <specular>0.1 0.1 0.1 1</specular>
       <direction>0.5 -0.3 -0.8</direction>
@@ -209,35 +237,47 @@ sdf = f'''<?xml version="1.0" ?>
     <model name="ground">
       <static>true</static>
       <link name="link">
-        <collision name="c"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision>
-        <visual name="v"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
-          <material><ambient>0.5 0.5 0.5 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        <collision name="c"><geometry><plane><normal>0 0 1</normal>
+          <size>20 20</size></plane></geometry></collision>
+        <visual name="v"><geometry><plane><normal>0 0 1</normal>
+          <size>20 20</size></plane></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- START zone (green) cell(0,0) -->
+    <!-- START zone (green) cell(0,0) center=(1,1) -->
     <model name="start_zone"><static>true</static>
-      <pose>0.75 0.75 0.005 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
-        <material><ambient>0.2 0.8 0.2 1</ambient><diffuse>0.2 0.8 0.2 1</diffuse></material></visual></link>
+      <pose>1 1 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.6 1.6 0.01</size></box></geometry>
+        <material><ambient>0.2 0.8 0.2 1</ambient>
+          <diffuse>0.2 0.8 0.2 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- TRUE GOAL (gold) cell(7,0) -->
+    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) -->
     <model name="true_goal"><static>true</static>
-      <pose>10.5 0.75 0.005 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
-        <material><ambient>0.9 0.7 0.1 1</ambient><diffuse>0.9 0.7 0.1 1</diffuse></material></visual></link>
+      <pose>11 1 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.6 1.6 0.01</size></box></geometry>
+        <material><ambient>0.9 0.7 0.1 1</ambient>
+          <diffuse>0.9 0.7 0.1 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- FALSE GOAL cell(6,2) -->
+    <!-- FALSE GOAL cell(4,3) center=(9,7) -->
     <model name="false_goal"><static>true</static>
-      <pose>9.75 3.75 0.005 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
-        <material><ambient>0.85 0.65 0.1 1</ambient><diffuse>0.85 0.65 0.1 1</diffuse></material></visual></link>
+      <pose>9 7 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.6 1.6 0.01</size></box></geometry>
+        <material><ambient>0.85 0.65 0.1 1</ambient>
+          <diffuse>0.85 0.65 0.1 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- ARENA WALLS (single model, all collisions in one link - like warehouse) -->
+    <!-- ARENA WALLS -->
     <model name="arena_walls">
       <static>1</static>
       <pose>0 0 0 0 0 0</pose>
@@ -248,57 +288,69 @@ sdf = f'''<?xml version="1.0" ?>
       </link>
     </model>
 
-    <!-- ArUco markers (4 white boxes on walls) -->
-    <model name="aruco_0"><static>true</static><pose>3.0 0.15 0.15 1.5708 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
-        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_1"><static>true</static><pose>7.5 0.15 0.15 1.5708 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
-        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_2"><static>true</static><pose>5.25 8.5 0.15 1.5708 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
-        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_3"><static>true</static><pose>6.0 3.75 0.15 1.5708 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
-        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
+    <!-- ArUco markers at accessible locations, camera height -->
+{aruco_model("aruco_0", 3.0, 2.15, on_wall_y=True)}
+{aruco_model("aruco_1", 9.0, 0.15, on_wall_y=True)}
+{aruco_model("aruco_2", 3.0, 8.85, on_wall_y=True)}
+{aruco_model("aruco_3", 7.0, 5.0, on_wall_y=False)}
 
-    <!-- 6 Directional signs (colored boxes) -->
-    <model name="sign_forward"><static>true</static><pose>2.25 1.5 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material></visual></link></model>
-    <model name="sign_right"><static>true</static><pose>3.75 0.75 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material></visual></link></model>
-    <model name="sign_left_trap"><static>true</static><pose>0.75 2.25 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material></visual></link></model>
-    <model name="sign_stop"><static>true</static><pose>8.25 0.75 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material></visual></link></model>
-    <model name="sign_goal"><static>true</static><pose>9.75 0.75 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material></visual></link></model>
-    <model name="sign_rotate"><static>true</static><pose>6.75 6.75 0.15 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-        <material><ambient>0.8 0.8 0 1</ambient><diffuse>0.8 0.8 0 1</diffuse></material></visual></link></model>
+    <!-- Directional signs on posts -->
+{sign_model("sign_forward_1", 1.0, 2.5, 0, 0.8, 0.8)}
+{sign_model("sign_right", 3.0, 1.0, 0, 0, 0.8)}
+{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0)}
+{sign_model("sign_forward_2", 7.0, 3.0, 0, 0.8, 0.8)}
+{sign_model("sign_stop", 9.0, 3.0, 0.8, 0, 0)}
+{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0)}
 
-    <!-- Static obstacles (4 brown boxes) -->
-    <model name="obs1"><static>true</static><pose>2.25 4.5 0.15 0 0 0.3</pose>
-      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
-    <model name="obs2"><static>true</static><pose>5.25 1.5 0.15 0 0 0.7</pose>
-      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
-    <model name="obs3"><static>true</static><pose>8.25 5.25 0.15 0 0 0.5</pose>
-      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
-    <model name="obs4"><static>true</static><pose>3.75 7.5 0.15 0 0 1.1</pose>
-      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
+    <!-- Static obstacles -->
+    <model name="obs1"><static>true</static>
+      <pose>3.0 5.0 0.15 0 0 0.3</pose>
+      <link name="l">
+        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="obs2"><static>true</static>
+      <pose>7.0 7.0 0.15 0 0 0.7</pose>
+      <link name="l">
+        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="obs3"><static>true</static>
+      <pose>5.0 1.0 0.15 0 0 0.5</pose>
+      <link name="l">
+        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="obs4"><static>true</static>
+      <pose>9.0 9.0 0.15 0 0 1.1</pose>
+      <link name="l">
+        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
+          </box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
 
   </world>
 </sdf>'''
@@ -312,5 +364,6 @@ with open(out_path, "w") as f:
 
 print(f"\nSDF written to {out_path}")
 print(f"Arena: {COLS}x{ROWS} grid, cell={CELL}m")
-print(f"Bounds: x=[0, {COLS * CELL}], y=[0, {ROWS * CELL}]")
-print(f"Robot spawns at (0.75, 0.75)")
+print(f"Corridor width: {CELL - WALL_THICK:.2f}m")
+print(f"Bounds: x=[0, {arena_w}], y=[0, {arena_h}]")
+print(f"Robot spawns at (1.0, 1.0)")
