@@ -1,12 +1,16 @@
 """Mission controller node for UGV Autonomous Navigation Challenge.
 
-Right-wall-following state machine that navigates a map-less arena,
-detects ArUco markers, interprets directional signs, and reaches the goal.
+Hybrid right-wall-following + visited-cell tracking state machine that
+navigates a map-less arena, detects ArUco markers, interprets directional
+signs, and reaches the goal.
 
 Uses a PD controller to maintain a fixed distance from the right wall,
-with 5-region LiDAR decomposition for decision making.
+with 5-region LiDAR decomposition for decision making.  An overlay grid
+tracks visited cells; when the robot revisits a cell 3+ times the
+wall-follower is overridden to break out of loops.
 
-States: EXPLORING, SIGN_FOLLOW, MARKER_APPROACH, GOAL_SEEK, RECOVERY, MISSION_COMPLETE
+States: EXPLORING, SIGN_FOLLOW, MARKER_APPROACH, GOAL_SEEK, RECOVERY,
+        MISSION_COMPLETE
 
 Topics:
   Subscribes:
@@ -23,6 +27,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final
@@ -44,19 +49,40 @@ MAX_ANGULAR: Final[float] = 0.6
 WALL_DIST: Final[float] = 0.4
 KP: Final[float] = 1.0
 KD: Final[float] = 0.5
+
+# Stuck detection
 STUCK_TIMEOUT: Final[float] = 10.0
 STUCK_MOVE_THRESHOLD: Final[float] = 0.1
+
+# Loop detection (position history based)
 LOOP_REVISIT_DIST: Final[float] = 0.8
 LOOP_TIME_THRESHOLD: Final[float] = 60.0
+LOOP_ACTIVATION_DELAY: Final[float] = 90.0
+
+# Visited-cell grid
+CELL_SIZE: Final[float] = 0.5
+REVISIT_LIMIT: Final[int] = 3
+
+# Markers
 REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
+
+# LiDAR
 SAFE_RANGE_MAX: Final[float] = 10.0
+
+# Wall-follower thresholds (proven working for ~0.9m corridors)
+FRONT_STOP: Final[float] = 0.25
+FRONT_SLOW: Final[float] = 0.40
+WALL_CLOSE: Final[float] = 0.30
+WALL_FAR: Final[float] = 0.80
 
 
 # ---------------------------------------------------------------------------
-#  Enums / Data
+#  Enums / Frozen Data
 # ---------------------------------------------------------------------------
 
 class State(Enum):
+    """Mission state machine states."""
+
     EXPLORING = auto()
     SIGN_FOLLOW = auto()
     MARKER_APPROACH = auto()
@@ -67,6 +93,8 @@ class State(Enum):
 
 @dataclass(frozen=True)
 class PositionRecord:
+    """Immutable snapshot of robot position at a point in time."""
+
     x: float
     y: float
     timestamp: float
@@ -75,6 +103,7 @@ class PositionRecord:
 @dataclass(frozen=True)
 class LidarRegions:
     """Five-region decomposition of LiDAR data."""
+
     right: float = SAFE_RANGE_MAX
     fright: float = SAFE_RANGE_MAX
     front: float = SAFE_RANGE_MAX
@@ -87,6 +116,7 @@ class LidarRegions:
 # ---------------------------------------------------------------------------
 
 def _clamp(value: float, low: float, high: float) -> float:
+    """Clamp *value* between *low* and *high* inclusive."""
     return max(low, min(high, value))
 
 
@@ -107,9 +137,14 @@ def _normalize_angle(angle: float) -> float:
 
 
 def _safe_min(values: list[float], default: float = SAFE_RANGE_MAX) -> float:
-    """Return min of *finite* values, or *default* if none are valid."""
+    """Return min of *finite* positive values, or *default*."""
     finite = [v for v in values if math.isfinite(v) and v > 0.01]
     return min(min(finite), default) if finite else default
+
+
+def _pos_to_cell(x: float, y: float) -> tuple[int, int]:
+    """Convert world position to a grid cell index."""
+    return (int(math.floor(x / CELL_SIZE)), int(math.floor(y / CELL_SIZE)))
 
 
 def _regions_from_scan(ranges: list[float]) -> LidarRegions:
@@ -138,54 +173,90 @@ def _regions_from_scan(ranges: list[float]) -> LidarRegions:
     )
 
 
+def _wall_follow_cmd(
+    regions: LidarRegions,
+    prev_error: float,
+) -> tuple[float, float, float]:
+    """Compute (linear, angular, new_prev_error) using PD wall-follower.
+
+    Returns the raw command from the right-wall-following algorithm.
+    """
+    r = regions
+
+    if r.front < FRONT_STOP:
+        return 0.0, MAX_ANGULAR, prev_error
+
+    if r.front < FRONT_SLOW:
+        return 0.08, MAX_ANGULAR * 0.6, prev_error
+
+    if r.fright < WALL_CLOSE:
+        return MAX_LINEAR * 0.7, 0.3, prev_error
+
+    if r.right > WALL_FAR and r.fright > WALL_FAR:
+        return MAX_LINEAR, -0.15, prev_error
+
+    if r.right < SAFE_RANGE_MAX:
+        error = WALL_DIST - r.right
+        d_error = error - prev_error
+        angular = _clamp(KP * error + KD * d_error, -MAX_ANGULAR, MAX_ANGULAR)
+        return MAX_LINEAR, angular, error
+
+    return MAX_LINEAR, -0.2, prev_error
+
+
 # ---------------------------------------------------------------------------
 #  Node
 # ---------------------------------------------------------------------------
 
 class MissionController(Node):
-    """Right-wall-following mission controller."""
+    """Hybrid wall-following + visited-cell mission controller."""
 
     def __init__(self) -> None:
         super().__init__("mission_controller")
 
-        # ----- state machine -----
+        # -- state machine --
         self._state: State = State.EXPLORING
         self._prev_state: State = State.EXPLORING
 
-        # ----- perception data -----
+        # -- perception data --
         self._regions: LidarRegions = LidarRegions()
         self._visited_markers: set[int] = set()
         self._current_sign: str | None = None
 
-        # ----- odometry -----
+        # -- odometry --
         self._x: float = 0.0
         self._y: float = 0.0
         self._yaw: float = 0.0
 
-        # ----- stuck detection -----
+        # -- stuck detection --
         self._start_time: float = time.monotonic()
         self._last_move_time: float = time.monotonic()
         self._last_move_x: float = 0.0
         self._last_move_y: float = 0.0
 
-        # ----- PD wall-follow state -----
+        # -- PD wall-follow state --
         self._prev_wall_error: float = 0.0
 
-        # ----- loop detection -----
+        # -- visited-cell tracking --
+        self._visited_cells: set[tuple[int, int]] = set()
+        self._cell_visit_count: dict[tuple[int, int], int] = defaultdict(int)
+        self._last_cell: tuple[int, int] = (0, 0)
+
+        # -- loop detection (position history) --
         self._position_history: list[PositionRecord] = []
         self._last_record_time: float = 0.0
 
-        # ----- recovery -----
+        # -- recovery --
         self._recovery_index: int = 0
         self._recovery_start: float = 0.0
         self._recovery_target_yaw: float = 0.0
 
-        # ----- sign follow -----
+        # -- sign follow --
         self._sign_target_yaw: float = 0.0
         self._sign_phase: str = "turning"
         self._sign_drive_start: float = 0.0
 
-        # ----- ROS2 interfaces -----
+        # -- ROS 2 interfaces --
         self.create_subscription(
             LaserScan, "/r1_mini/lidar", self._lidar_cb, 10)
         self.create_subscription(
@@ -215,22 +286,9 @@ class MissionController(Node):
         self._y = msg.pose.pose.position.y
         self._yaw = _yaw_from_quaternion(msg.pose.pose.orientation)
 
-        dx = self._x - self._last_move_x
-        dy = self._y - self._last_move_y
-        if math.hypot(dx, dy) > STUCK_MOVE_THRESHOLD:
-            self._last_move_time = time.monotonic()
-            self._last_move_x = self._x
-            self._last_move_y = self._y
-
-        now = time.monotonic()
-        if now - self._last_record_time > 2.0:
-            self._position_history.append(
-                PositionRecord(self._x, self._y, now))
-            self._last_record_time = now
-            cutoff = now - 120.0
-            self._position_history = [
-                p for p in self._position_history if p.timestamp > cutoff
-            ]
+        self._update_move_tracking()
+        self._update_position_history()
+        self._update_cell_tracking()
 
     def _aruco_cb(self, msg: Int32MultiArray) -> None:
         for mid in msg.data:
@@ -257,16 +315,58 @@ class MissionController(Node):
                     "GOAL sign seen but markers incomplete - ignoring")
             return
 
-        # Reject misleading signs using LiDAR cross-check
-        if direction == "LEFT" and self._regions.left < 0.4:
-            self.get_logger().warn("LEFT sign rejected - wall on left")
-            return
-        if direction == "RIGHT" and self._regions.right < 0.4:
-            self.get_logger().warn("RIGHT sign rejected - wall on right")
+        if not self._validate_sign_direction(direction):
             return
 
         self._current_sign = direction
         self._transition(State.SIGN_FOLLOW)
+
+    # ------------------------------------------------------------------
+    #  Odom helper updates (called from _odom_cb)
+    # ------------------------------------------------------------------
+
+    def _update_move_tracking(self) -> None:
+        """Update stuck-detection move tracker."""
+        dx = self._x - self._last_move_x
+        dy = self._y - self._last_move_y
+        if math.hypot(dx, dy) > STUCK_MOVE_THRESHOLD:
+            self._last_move_time = time.monotonic()
+            self._last_move_x = self._x
+            self._last_move_y = self._y
+
+    def _update_position_history(self) -> None:
+        """Record position every 2 s and prune records older than 120 s."""
+        now = time.monotonic()
+        if now - self._last_record_time > 2.0:
+            self._position_history.append(
+                PositionRecord(self._x, self._y, now))
+            self._last_record_time = now
+            cutoff = now - 120.0
+            self._position_history = [
+                p for p in self._position_history if p.timestamp > cutoff
+            ]
+
+    def _update_cell_tracking(self) -> None:
+        """Track which grid cells the robot visits and how often."""
+        cell = _pos_to_cell(self._x, self._y)
+        if cell != self._last_cell:
+            self._visited_cells.add(cell)
+            self._cell_visit_count[cell] += 1
+            self._last_cell = cell
+
+    # ------------------------------------------------------------------
+    #  Sign validation
+    # ------------------------------------------------------------------
+
+    def _validate_sign_direction(self, direction: str) -> bool:
+        """Reject misleading signs using LiDAR cross-check."""
+        if direction == "LEFT" and self._regions.left < 0.4:
+            self.get_logger().warn("LEFT sign rejected - wall on left")
+            return False
+        if direction == "RIGHT" and self._regions.right < 0.4:
+            self.get_logger().warn("RIGHT sign rejected - wall on right")
+            return False
+        return True
 
     # ------------------------------------------------------------------
     #  State transition
@@ -298,25 +398,13 @@ class MissionController(Node):
             self._publish_vel(0.0, 0.0)
             return
 
-        # Stuck detection (skip during recovery)
-        if self._state != State.RECOVERY:
-            stuck_secs = time.monotonic() - self._last_move_time
-            if stuck_secs > STUCK_TIMEOUT:
-                self.get_logger().warn(
-                    f"Stuck for {stuck_secs:.1f}s - entering RECOVERY")
-                self._transition(State.RECOVERY)
-                return
-
-        # Loop detection during exploration (only after 90s to let robot explore first)
-        if (self._state == State.EXPLORING
-                and time.monotonic() - self._start_time > 90.0
-                and self._detect_loop()):
-            self.get_logger().warn("Loop detected - entering RECOVERY")
-            self._transition(State.RECOVERY)
+        if self._check_stuck():
             return
 
-        # Dispatch
-        handlers = {
+        if self._check_loop():
+            return
+
+        handlers: dict = {
             State.EXPLORING: self._do_exploring,
             State.SIGN_FOLLOW: self._do_sign_follow,
             State.GOAL_SEEK: self._do_goal_seek,
@@ -326,51 +414,74 @@ class MissionController(Node):
         if handler is not None:
             handler()
 
+    def _check_stuck(self) -> bool:
+        """Return True (and enter RECOVERY) if robot is stuck."""
+        if self._state == State.RECOVERY:
+            return False
+        stuck_secs = time.monotonic() - self._last_move_time
+        if stuck_secs > STUCK_TIMEOUT:
+            self.get_logger().warn(
+                f"Stuck for {stuck_secs:.1f}s - entering RECOVERY")
+            self._transition(State.RECOVERY)
+            return True
+        return False
+
+    def _check_loop(self) -> bool:
+        """Return True (and enter RECOVERY) if a loop is detected."""
+        if self._state != State.EXPLORING:
+            return False
+        elapsed = time.monotonic() - self._start_time
+        if elapsed > LOOP_ACTIVATION_DELAY and self._detect_loop():
+            self.get_logger().warn("Loop detected - entering RECOVERY")
+            self._transition(State.RECOVERY)
+            return True
+        return False
+
     # ------------------------------------------------------------------
-    #  EXPLORING: Right-wall following with PD controller
+    #  EXPLORING: Right-wall following + visited-cell override
     # ------------------------------------------------------------------
 
     def _do_exploring(self) -> None:
+        cell = _pos_to_cell(self._x, self._y)
+        visits = self._cell_visit_count.get(cell, 0)
+
+        if visits >= REVISIT_LIMIT:
+            self._do_exploring_override()
+            return
+
+        linear, angular, new_error = _wall_follow_cmd(
+            self._regions, self._prev_wall_error)
+        self._prev_wall_error = new_error
+        self._publish_vel(linear, angular)
+
+    def _do_exploring_override(self) -> None:
+        """Override wall-follower when current cell revisited too often.
+
+        Strategy: if the normal wall-follower would turn right (or go
+        straight), force a left turn instead.  If already turning left,
+        go straight.  This breaks the repetitive loop pattern.
+        """
         r = self._regions
 
-        # Thresholds tuned for narrow corridors (~0.9m wide)
-        FRONT_STOP = 0.25      # emergency stop & turn
-        FRONT_SLOW = 0.40      # slow down and start turning
-        WALL_CLOSE = 0.30      # too close to side wall
-        WALL_FAR = 0.80        # side wall getting far (opening)
-
         if r.front < FRONT_STOP:
-            # Emergency: wall very close ahead - stop and turn left
-            linear = 0.0
-            angular = MAX_ANGULAR
-        elif r.front < FRONT_SLOW:
-            # Wall ahead but not immediate - slow turn left
-            linear = 0.08
-            angular = MAX_ANGULAR * 0.6
-        elif r.fright < WALL_CLOSE:
-            # Too close to right-front wall - veer left
-            linear = MAX_LINEAR * 0.7
-            angular = 0.3
-        elif r.right > WALL_FAR and r.fright > WALL_FAR:
-            # Right side is open (found an opening) - drive forward first
-            # then gently turn right. This prevents turning too early
-            # and missing the opening.
-            linear = MAX_LINEAR
-            angular = -0.15
-        elif r.right < SAFE_RANGE_MAX:
-            # Right wall visible - PD wall follow
-            error = WALL_DIST - r.right
-            d_error = error - self._prev_wall_error
-            self._prev_wall_error = error
-            angular = _clamp(KP * error + KD * d_error,
-                             -MAX_ANGULAR, MAX_ANGULAR)
-            linear = MAX_LINEAR
-        else:
-            # No wall nearby - drive forward and turn right gently
-            linear = MAX_LINEAR
-            angular = -0.2
+            # Still need to avoid frontal collision - turn left hard
+            self._publish_vel(0.0, MAX_ANGULAR)
+            return
 
-        self._publish_vel(linear, angular)
+        # Prefer going toward the least-visited adjacent direction
+        if r.left > WALL_CLOSE and r.fleft > WALL_CLOSE:
+            # Left is open - override: turn left
+            self.get_logger().info(
+                "Cell revisit override: turning LEFT to break loop")
+            self._publish_vel(MAX_LINEAR * 0.8, 0.3)
+        elif r.front > FRONT_SLOW:
+            # Straight is open - just go forward
+            self.get_logger().info(
+                "Cell revisit override: going STRAIGHT to break loop")
+            self._publish_vel(MAX_LINEAR, 0.0)
+        else:
+            # Fallback: slow left turn
+            self._publish_vel(0.05, MAX_ANGULAR * 0.7)
 
     # ------------------------------------------------------------------
     #  SIGN_FOLLOW
@@ -399,32 +510,41 @@ class MissionController(Node):
         now = time.monotonic()
 
         if self._sign_phase == "turning":
-            error = _normalize_angle(self._sign_target_yaw - self._yaw)
-            if abs(error) < 0.15:
-                self._sign_phase = "driving"
-                self._sign_drive_start = now
-                self._publish_vel(0.0, 0.0)
-            else:
-                angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-                self._publish_vel(0.0, angular)
-
+            self._do_sign_turning(now)
         elif self._sign_phase == "driving":
-            if now - self._sign_drive_start > 2.0 or self._regions.front < 0.4:
-                self._transition(State.EXPLORING)
-                return
-            self._publish_vel(MAX_LINEAR, 0.0)
-
+            self._do_sign_driving(now)
         elif self._sign_phase == "stopped":
-            if now - self._sign_drive_start > 2.0:
-                self._transition(State.EXPLORING)
-                return
-            self._publish_vel(0.0, 0.0)
-
+            self._do_sign_stopped(now)
         elif self._sign_phase == "spinning":
-            if now - self._sign_drive_start > 5.0:
-                self._transition(State.EXPLORING)
-                return
-            self._publish_vel(0.0, MAX_ANGULAR)
+            self._do_sign_spinning(now)
+
+    def _do_sign_turning(self, now: float) -> None:
+        error = _normalize_angle(self._sign_target_yaw - self._yaw)
+        if abs(error) < 0.15:
+            self._sign_phase = "driving"
+            self._sign_drive_start = now
+            self._publish_vel(0.0, 0.0)
+        else:
+            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(0.0, angular)
+
+    def _do_sign_driving(self, now: float) -> None:
+        if now - self._sign_drive_start > 2.0 or self._regions.front < 0.4:
+            self._transition(State.EXPLORING)
+            return
+        self._publish_vel(MAX_LINEAR, 0.0)
+
+    def _do_sign_stopped(self, now: float) -> None:
+        if now - self._sign_drive_start > 2.0:
+            self._transition(State.EXPLORING)
+            return
+        self._publish_vel(0.0, 0.0)
+
+    def _do_sign_spinning(self, now: float) -> None:
+        if now - self._sign_drive_start > 5.0:
+            self._transition(State.EXPLORING)
+            return
+        self._publish_vel(0.0, MAX_ANGULAR)
 
     # ------------------------------------------------------------------
     #  GOAL_SEEK
@@ -450,45 +570,59 @@ class MissionController(Node):
         strategy = self._recovery_index % 3
 
         if strategy == 0:
-            # Strategy 1: Spin in place (360 degrees at 0.5 rad/s ~ 12.6s)
-            if elapsed > 6.5:
-                self._finish_recovery()
-                return
-            self._publish_vel(0.0, 0.5)
-
+            self._do_recovery_spin(elapsed)
         elif strategy == 1:
-            # Strategy 2: Backtrack 0.3m at -0.15 m/s ~ 2s
-            if elapsed > 2.0:
+            self._do_recovery_backtrack(elapsed)
+        elif strategy == 2:
+            self._do_recovery_escape(elapsed)
+
+    def _do_recovery_spin(self, elapsed: float) -> None:
+        """Strategy 1: Spin in place (~360 deg at 0.5 rad/s)."""
+        if elapsed > 6.5:
+            self._finish_recovery()
+            return
+        self._publish_vel(0.0, 0.5)
+
+    def _do_recovery_backtrack(self, elapsed: float) -> None:
+        """Strategy 2: Backtrack 0.3 m at -0.15 m/s."""
+        if elapsed > 2.0:
+            self._finish_recovery()
+            return
+        self._publish_vel(-0.15, 0.0)
+
+    def _do_recovery_escape(self, elapsed: float) -> None:
+        """Strategy 3: Reverse 0.5 m then turn 90 deg."""
+        if elapsed < 3.3:
+            self._publish_vel(-0.15, 0.0)
+        elif elapsed < 7.0:
+            error = _normalize_angle(
+                self._recovery_target_yaw - self._yaw)
+            if abs(error) < 0.2:
                 self._finish_recovery()
                 return
-            self._publish_vel(-0.15, 0.0)
-
-        elif strategy == 2:
-            # Strategy 3: Escape dead-end - reverse 0.5m + turn 180
-            if elapsed < 3.3:
-                self._publish_vel(-0.15, 0.0)
-            elif elapsed < 7.0:
-                error = _normalize_angle(
-                    self._recovery_target_yaw - self._yaw)
-                if abs(error) < 0.2:
-                    self._finish_recovery()
-                    return
-                angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-                self._publish_vel(0.0, angular)
-            else:
-                self._finish_recovery()
+            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(0.0, angular)
+        else:
+            self._finish_recovery()
 
     def _finish_recovery(self) -> None:
         self._recovery_index += 1
         self._last_move_time = time.monotonic()
         self._prev_wall_error = 0.0
+        # Clear history so loop detection does not immediately re-trigger
+        self._position_history.clear()
+        self._last_record_time = time.monotonic()
+        # Clear visited cells for fresh exploration after recovery
+        self._visited_cells.clear()
+        self._cell_visit_count.clear()
         self._transition(State.EXPLORING)
 
     # ------------------------------------------------------------------
-    #  Loop detection
+    #  Loop detection (position-history based)
     # ------------------------------------------------------------------
 
     def _detect_loop(self) -> bool:
+        """Check if the robot is near a position it occupied >60 s ago."""
         now = time.monotonic()
         for record in self._position_history:
             age = now - record.timestamp
