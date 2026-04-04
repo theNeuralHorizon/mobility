@@ -85,6 +85,7 @@ print(line)
 # ---- Generate wall SDF links --------------------------------------------
 
 wall_links: list[str] = []
+wall_visuals: list[str] = []
 wall_id = 0
 
 
@@ -92,21 +93,25 @@ def add_wall(
     x: float, y: float, length: float,
     vertical: bool = False, thick: float = WALL_THICK,
 ) -> None:
-    """Each wall is its own static model for reliable collision."""
+    """Add wall collision and visual to the single arena_collision model."""
     global wall_id
     wall_id += 1
     rot = "1.5708" if vertical else "0"
+    # Collision (in the collision link) with surface properties
     wall_links.append(
-        f'    <model name="w{wall_id}">\n'
-        f'      <static>true</static>\n'
-        f'      <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
-        f'      <link name="link">\n'
-        f'        <collision name="c"><geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry></collision>\n'
-        f'        <visual name="v"><geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
+        f'        <collision name="w{wall_id}">\n'
+        f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
+        f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
+        f'          <surface><friction><ode/></friction><bounce/><contact/></surface>\n'
+        f'        </collision>'
+    )
+    # Visual (in the visual link)
+    wall_visuals.append(
+        f'        <visual name="w{wall_id}">\n'
+        f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
+        f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
         f'          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>\n'
-        f'        </visual>\n'
-        f'      </link>\n'
-        f'    </model>'
+        f'        </visual>'
     )
 
 
@@ -232,8 +237,16 @@ sdf = f'''<?xml version="1.0" ?>
         <material><ambient>0.85 0.65 0.1 1</ambient><diffuse>0.85 0.65 0.1 1</diffuse></material></visual></link>
     </model>
 
-    <!-- ARENA WALLS (each wall is a separate static model) -->
+    <!-- ARENA WALLS (single model, all collisions in one link - like warehouse) -->
+    <model name="arena_walls">
+      <static>1</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="collision_link">
+        <pose>0 0 0 0 0 0</pose>
 {chr(10).join(wall_links)}
+{chr(10).join(wall_visuals)}
+      </link>
+    </model>
 
     <!-- ArUco markers (4 white boxes on walls) -->
     <model name="aruco_0"><static>true</static><pose>3.0 0.15 0.7 1.5708 0 0</pose>
