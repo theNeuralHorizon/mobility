@@ -57,18 +57,28 @@ def generate_launch_description():
         launch_arguments={"use_sim_time": "true"}.items(),
     )
 
-    # ROS-Gazebo Bridge
+    # ROS-Gazebo Bridge (supports both Fortress/ignition and Harmonic/gz)
+    # Detect which message prefix to use
+    import subprocess
+    gz_version = subprocess.run(
+        ["gz", "sim", "--version"], capture_output=True, text=True
+    )
+    if "version 8" in gz_version.stdout or "version 9" in gz_version.stdout:
+        gz_prefix = "gz.msgs"  # Gazebo Harmonic+
+    else:
+        gz_prefix = "ignition.msgs"  # Gazebo Fortress
+
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
         arguments=[
-            "/cmd_vel@geometry_msgs/msg/Twist@ignition.msgs.Twist",
-            "/r1_mini/odom@nav_msgs/msg/Odometry[ignition.msgs.Odometry",
-            "/r1_mini/lidar@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan",
-            "/r1_mini/imu@sensor_msgs/msg/Imu[ignition.msgs.IMU",
-            "/r1_mini/camera@sensor_msgs/msg/Image[ignition.msgs.Image",
-            "/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock",
-            "/r1_mini/joint_states@sensor_msgs/msg/JointState[ignition.msgs.Model",
+            f"/cmd_vel@geometry_msgs/msg/Twist@{gz_prefix}.Twist",
+            f"/r1_mini/odom@nav_msgs/msg/Odometry[{gz_prefix}.Odometry",
+            f"/r1_mini/lidar@sensor_msgs/msg/LaserScan[{gz_prefix}.LaserScan",
+            f"/r1_mini/imu@sensor_msgs/msg/Imu[{gz_prefix}.IMU",
+            f"/r1_mini/camera@sensor_msgs/msg/Image[{gz_prefix}.Image",
+            f"/clock@rosgraph_msgs/msg/Clock[{gz_prefix}.Clock",
+            f"/r1_mini/joint_states@sensor_msgs/msg/JointState[{gz_prefix}.Model",
         ],
         output="screen",
     )

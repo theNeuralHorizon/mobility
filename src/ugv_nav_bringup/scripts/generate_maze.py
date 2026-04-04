@@ -175,14 +175,14 @@ sdf = f'''<?xml version="1.0" ?>
       <max_step_size>0.01</max_step_size>
       <real_time_factor>1</real_time_factor>
     </physics>
-    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
-    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
-    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
-    <plugin filename="ignition-gazebo-imu-system" name="ignition::gazebo::systems::Imu"/>
-    <plugin filename="ignition-gazebo-sensors-system" name="ignition::gazebo::systems::Sensors">
-      <render_engine>ogre</render_engine>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
     </plugin>
-    <plugin filename="ignition-gazebo-contact-system" name="ignition::gazebo::systems::Contact"/>
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
 
     <scene>
       <ambient>0.6 0.6 0.6 1</ambient>
@@ -249,36 +249,36 @@ sdf = f'''<?xml version="1.0" ?>
     </model>
 
     <!-- ArUco markers (4 white boxes on walls) -->
-    <model name="aruco_0"><static>true</static><pose>3.0 0.15 0.7 1.5708 0 0</pose>
+    <model name="aruco_0"><static>true</static><pose>3.0 0.15 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_1"><static>true</static><pose>7.5 0.15 0.7 1.5708 0 0</pose>
+    <model name="aruco_1"><static>true</static><pose>7.5 0.15 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_2"><static>true</static><pose>5.25 8.5 0.7 1.5708 0 0</pose>
+    <model name="aruco_2"><static>true</static><pose>5.25 8.5 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
-    <model name="aruco_3"><static>true</static><pose>6.0 3.75 0.7 1.5708 0 0</pose>
+    <model name="aruco_3"><static>true</static><pose>6.0 3.75 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
 
     <!-- 6 Directional signs (colored boxes) -->
-    <model name="sign_forward"><static>true</static><pose>2.25 1.5 0.7 0 0 0</pose>
+    <model name="sign_forward"><static>true</static><pose>2.25 1.5 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material></visual></link></model>
-    <model name="sign_right"><static>true</static><pose>3.75 0.75 0.7 0 0 0</pose>
+    <model name="sign_right"><static>true</static><pose>3.75 0.75 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material></visual></link></model>
-    <model name="sign_left_trap"><static>true</static><pose>0.75 2.25 0.7 0 0 0</pose>
+    <model name="sign_left_trap"><static>true</static><pose>0.75 2.25 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material></visual></link></model>
-    <model name="sign_stop"><static>true</static><pose>8.25 0.75 0.7 0 0 0</pose>
+    <model name="sign_stop"><static>true</static><pose>8.25 0.75 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material></visual></link></model>
-    <model name="sign_goal"><static>true</static><pose>9.75 0.75 0.7 0 0 0</pose>
+    <model name="sign_goal"><static>true</static><pose>9.75 0.75 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material></visual></link></model>
-    <model name="sign_rotate"><static>true</static><pose>6.75 6.75 0.7 0 0 0</pose>
+    <model name="sign_rotate"><static>true</static><pose>6.75 6.75 0.15 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
         <material><ambient>0.8 0.8 0 1</ambient><diffuse>0.8 0.8 0 1</diffuse></material></visual></link></model>
 
