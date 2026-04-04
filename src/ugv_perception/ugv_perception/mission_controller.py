@@ -445,9 +445,8 @@ class MissionController(Node):
         cell = _pos_to_cell(self._x, self._y)
         visits = self._cell_visit_count.get(cell, 0)
 
-        if visits >= REVISIT_LIMIT:
-            self._do_exploring_override()
-            return
+        # Cell revisit tracking for diagnostics only (no override)
+        # The wall-follower + recovery handles exploration adequately
 
         linear, angular, new_error = _wall_follow_cmd(
             self._regions, self._prev_wall_error)
