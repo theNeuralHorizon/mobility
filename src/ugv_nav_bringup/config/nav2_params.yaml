@@ -201,6 +201,15 @@ collision_monitor:
     transform_tolerance: 0.2
     source_timeout: 1.0
     stop_pub_timeout: 2.0
+    polygons: ["stop_footprint"]
+    stop_footprint:
+      type: "polygon"
+      points: "[[0.12, 0.12], [0.12, -0.12], [-0.12, -0.12], [-0.12, 0.12]]"
+      action_type: "stop"
+      max_points: 3
+      visualize: false
+      polygon_pub_topic: "polygon_stop"
+      enabled: true
     observation_sources: ["scan"]
     scan:
       type: "scan"
