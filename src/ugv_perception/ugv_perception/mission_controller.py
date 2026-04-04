@@ -163,6 +163,7 @@ class MissionController(Node):
         self._yaw: float = 0.0
 
         # ----- stuck detection -----
+        self._start_time: float = time.monotonic()
         self._last_move_time: float = time.monotonic()
         self._last_move_x: float = 0.0
         self._last_move_y: float = 0.0
@@ -306,8 +307,10 @@ class MissionController(Node):
                 self._transition(State.RECOVERY)
                 return
 
-        # Loop detection during exploration
-        if self._state == State.EXPLORING and self._detect_loop():
+        # Loop detection during exploration (only after 90s to let robot explore first)
+        if (self._state == State.EXPLORING
+                and time.monotonic() - self._start_time > 90.0
+                and self._detect_loop()):
             self.get_logger().warn("Loop detected - entering RECOVERY")
             self._transition(State.RECOVERY)
             return
@@ -349,9 +352,11 @@ class MissionController(Node):
             linear = MAX_LINEAR * 0.7
             angular = 0.3
         elif r.right > WALL_FAR and r.fright > WALL_FAR:
-            # Right side is open - turn right to follow wall
-            linear = MAX_LINEAR * 0.8
-            angular = -0.4
+            # Right side is open (found an opening) - drive forward first
+            # then gently turn right. This prevents turning too early
+            # and missing the opening.
+            linear = MAX_LINEAR
+            angular = -0.15
         elif r.right < SAFE_RANGE_MAX:
             # Right wall visible - PD wall follow
             error = WALL_DIST - r.right
