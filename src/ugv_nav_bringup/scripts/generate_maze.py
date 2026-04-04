@@ -77,18 +77,20 @@ def add_wall(
     x: float, y: float, length: float,
     vertical: bool = False, thick: float = WALL_THICK,
 ) -> None:
+    """Match warehouse depot_collision format exactly: collision-only, no surface tags."""
     global wall_id
     wall_id += 1
     rot = "1.5708" if vertical else "0"
+    # Collision only (no surface tags - matches working warehouse format)
     wall_links.append(
         f'        <collision name="w{wall_id}">\n'
         f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
         f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
-        f'          <surface><friction><ode/></friction><bounce/><contact/></surface>\n'
         f'        </collision>'
     )
+    # Visual separate
     wall_visuals.append(
-        f'        <visual name="w{wall_id}">\n'
+        f'        <visual name="wv{wall_id}">\n'
         f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
         f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
         f'          <material><ambient>0.35 0.35 0.35 1</ambient>'
@@ -277,13 +279,22 @@ sdf = f'''<?xml version="1.0" ?>
       </visual></link>
     </model>
 
-    <!-- ARENA WALLS -->
-    <model name="arena_walls">
+    <!-- ARENA WALLS: collision model (matches warehouse depot_collision format) -->
+    <model name="arena_collision">
       <static>1</static>
       <pose>0 0 0 0 0 0</pose>
       <link name="collision_link">
         <pose>0 0 0 0 0 0</pose>
 {chr(10).join(wall_links)}
+      </link>
+    </model>
+
+    <!-- ARENA WALLS: visual model (separate from collision) -->
+    <model name="arena_visual">
+      <static>1</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="visual_link">
+        <pose>0 0 0 0 0 0</pose>
 {chr(10).join(wall_visuals)}
       </link>
     </model>

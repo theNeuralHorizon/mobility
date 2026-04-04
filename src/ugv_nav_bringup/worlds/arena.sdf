@@ -86,8 +86,8 @@
       </visual></link>
     </model>
 
-    <!-- ARENA WALLS -->
-    <model name="arena_walls">
+    <!-- ARENA WALLS: collision model (matches warehouse depot_collision format) -->
+    <model name="arena_collision">
       <static>1</static>
       <pose>0 0 0 0 0 0</pose>
       <link name="collision_link">
@@ -95,229 +95,215 @@
         <collision name="w1">
           <pose>6.000 -0.150 0.5 0 0 0</pose>
           <geometry><box><size>13.000 0.3 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w2">
           <pose>6.000 10.150 0.5 0 0 0</pose>
           <geometry><box><size>13.000 0.3 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w3">
           <pose>-0.150 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>11.000 0.3 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w4">
           <pose>12.150 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>11.000 0.3 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w5">
           <pose>5.000 2.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w6">
           <pose>9.000 2.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w7">
           <pose>1.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w8">
           <pose>7.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w9">
           <pose>11.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w10">
           <pose>3.000 6.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w11">
           <pose>9.000 6.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w12">
           <pose>1.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w13">
           <pose>5.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w14">
           <pose>11.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w15">
           <pose>2.000 3.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w16">
           <pose>2.000 7.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w17">
           <pose>4.000 1.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w18">
           <pose>4.000 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w19">
           <pose>4.000 9.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w20">
           <pose>6.000 3.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w21">
           <pose>8.000 1.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w22">
           <pose>8.000 8.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>4.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
         <collision name="w23">
           <pose>10.000 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
-          <surface><friction><ode/></friction><bounce/><contact/></surface>
         </collision>
-        <visual name="w1">
+      </link>
+    </model>
+
+    <!-- ARENA WALLS: visual model (separate from collision) -->
+    <model name="arena_visual">
+      <static>1</static>
+      <pose>0 0 0 0 0 0</pose>
+      <link name="visual_link">
+        <pose>0 0 0 0 0 0</pose>
+        <visual name="wv1">
           <pose>6.000 -0.150 0.5 0 0 0</pose>
           <geometry><box><size>13.000 0.3 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w2">
+        <visual name="wv2">
           <pose>6.000 10.150 0.5 0 0 0</pose>
           <geometry><box><size>13.000 0.3 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w3">
+        <visual name="wv3">
           <pose>-0.150 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>11.000 0.3 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w4">
+        <visual name="wv4">
           <pose>12.150 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>11.000 0.3 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w5">
+        <visual name="wv5">
           <pose>5.000 2.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w6">
+        <visual name="wv6">
           <pose>9.000 2.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w7">
+        <visual name="wv7">
           <pose>1.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w8">
+        <visual name="wv8">
           <pose>7.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w9">
+        <visual name="wv9">
           <pose>11.000 4.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w10">
+        <visual name="wv10">
           <pose>3.000 6.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w11">
+        <visual name="wv11">
           <pose>9.000 6.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w12">
+        <visual name="wv12">
           <pose>1.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w13">
+        <visual name="wv13">
           <pose>5.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w14">
+        <visual name="wv14">
           <pose>11.000 8.000 0.5 0 0 0</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w15">
+        <visual name="wv15">
           <pose>2.000 3.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w16">
+        <visual name="wv16">
           <pose>2.000 7.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w17">
+        <visual name="wv17">
           <pose>4.000 1.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w18">
+        <visual name="wv18">
           <pose>4.000 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w19">
+        <visual name="wv19">
           <pose>4.000 9.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w20">
+        <visual name="wv20">
           <pose>6.000 3.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w21">
+        <visual name="wv21">
           <pose>8.000 1.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w22">
+        <visual name="wv22">
           <pose>8.000 8.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>4.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
-        <visual name="w23">
+        <visual name="wv23">
           <pose>10.000 5.000 0.5 0 0 1.5708</pose>
           <geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
