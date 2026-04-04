@@ -31,10 +31,10 @@ class ArucoDetector(Node):
         self._aruco_dict = cv2.aruco.getPredefinedDictionary(self.ARUCO_DICT)
 
         # Support both old and new OpenCV ArUco API
-        if hasattr(cv2.aruco, "DetectorParameters"):
-            self._aruco_params = cv2.aruco.DetectorParameters()
+        if hasattr(cv2.aruco, "ArucoDetector"):
+            params = cv2.aruco.DetectorParameters()
             self._detector = cv2.aruco.ArucoDetector(
-                self._aruco_dict, self._aruco_params)
+                self._aruco_dict, params)
             self._use_new_api = True
         else:
             self._aruco_params = cv2.aruco.DetectorParameters_create()
