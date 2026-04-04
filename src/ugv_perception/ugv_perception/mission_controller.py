@@ -330,49 +330,40 @@ class MissionController(Node):
     def _do_exploring(self) -> None:
         r = self._regions
 
-        # Determine case
-        all_clear = (r.front > 1.0 and r.fright > 1.0
-                     and r.right > 1.0 and r.fleft > 1.0 and r.left > 1.0)
-        front_blocked = r.front < 0.5
-        right_found = r.right < 1.0
+        # Thresholds tuned for narrow corridors (~0.9m wide)
+        FRONT_STOP = 0.25      # emergency stop & turn
+        FRONT_SLOW = 0.40      # slow down and start turning
+        WALL_CLOSE = 0.30      # too close to side wall
+        WALL_FAR = 0.80        # side wall getting far (opening)
 
-        if all_clear:
-            # Case 1: Nothing nearby - turn right gently to find wall
-            linear = MAX_LINEAR
-            angular = -0.3
-        elif not front_blocked and right_found:
-            # Case 2: Front clear, right wall found - PD wall follow
-            error = WALL_DIST - r.right
-            d_error = error - self._prev_wall_error
-            self._prev_wall_error = error
-            angular = _clamp(KP * error + KD * d_error,
-                             -MAX_ANGULAR, MAX_ANGULAR)
-            linear = MAX_LINEAR
-        elif front_blocked and r.right < 0.5 and r.left < 0.5:
-            # Case 5: Corridor dead-end - turn left
+        if r.front < FRONT_STOP:
+            # Emergency: wall very close ahead - stop and turn left
             linear = 0.0
             angular = MAX_ANGULAR
-        elif front_blocked and r.right < 0.5:
-            # Case 4: Front + right blocked - sharp left turn
-            linear = 0.0
-            angular = MAX_ANGULAR
-        elif front_blocked:
-            # Case 3: Front blocked - turn left
-            linear = 0.05
-            angular = MAX_ANGULAR * 0.7
-        else:
-            # Default: gentle right-wall follow
-            error = WALL_DIST - r.right
-            d_error = error - self._prev_wall_error
-            self._prev_wall_error = error
-            angular = _clamp(KP * error + KD * d_error,
-                             -MAX_ANGULAR, MAX_ANGULAR)
+        elif r.front < FRONT_SLOW:
+            # Wall ahead but not immediate - slow turn left
+            linear = 0.08
+            angular = MAX_ANGULAR * 0.6
+        elif r.fright < WALL_CLOSE:
+            # Too close to right-front wall - veer left
+            linear = MAX_LINEAR * 0.7
+            angular = 0.3
+        elif r.right > WALL_FAR and r.fright > WALL_FAR:
+            # Right side is open - turn right to follow wall
             linear = MAX_LINEAR * 0.8
-
-        # Slow down in tight spaces
-        min_clearance = min(r.left, r.right, r.front)
-        if min_clearance < 0.3:
-            linear *= 0.5
+            angular = -0.4
+        elif r.right < SAFE_RANGE_MAX:
+            # Right wall visible - PD wall follow
+            error = WALL_DIST - r.right
+            d_error = error - self._prev_wall_error
+            self._prev_wall_error = error
+            angular = _clamp(KP * error + KD * d_error,
+                             -MAX_ANGULAR, MAX_ANGULAR)
+            linear = MAX_LINEAR
+        else:
+            # No wall nearby - drive forward and turn right gently
+            linear = MAX_LINEAR
+            angular = -0.2
 
         self._publish_vel(linear, angular)
 

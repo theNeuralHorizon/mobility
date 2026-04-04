@@ -153,13 +153,13 @@
     <!-- BOTTOM wall: y=-4, from x=-1 to x=9 (length=10.15) -->
     <model name='wall_bottom'>
       <static>true</static>
-      <pose>4 -4.075 0.5 0 0 0</pose>
+      <pose>4 -4.25 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>10.15 0.15 1.0</size></box></geometry>
+          <geometry><box><size>11.0 0.5 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>10.15 0.15 1.0</size></box></geometry>
+          <geometry><box><size>11.0 0.5 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -171,13 +171,13 @@
     <!-- TOP wall: y=4, from x=-1 to x=9 (length=10.15) -->
     <model name='wall_top'>
       <static>true</static>
-      <pose>4 4.075 0.5 0 0 0</pose>
+      <pose>4 4.25 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>10.15 0.15 1.0</size></box></geometry>
+          <geometry><box><size>11.0 0.5 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>10.15 0.15 1.0</size></box></geometry>
+          <geometry><box><size>11.0 0.5 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -189,13 +189,13 @@
     <!-- LEFT wall: x=-1, from y=-4 to y=4 (length=8.15) -->
     <model name='wall_left'>
       <static>true</static>
-      <pose>-1.075 0 0.5 0 0 0</pose>
+      <pose>-1.25 0 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>0.15 8.15 1.0</size></box></geometry>
+          <geometry><box><size>0.5 9.0 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>0.15 8.15 1.0</size></box></geometry>
+          <geometry><box><size>0.5 9.0 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -207,13 +207,13 @@
     <!-- RIGHT wall: x=9, from y=-4 to y=4 (length=8.15) -->
     <model name='wall_right'>
       <static>true</static>
-      <pose>9.075 0 0.5 0 0 0</pose>
+      <pose>9.25 0 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>0.15 8.15 1.0</size></box></geometry>
+          <geometry><box><size>0.5 9.0 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>0.15 8.15 1.0</size></box></geometry>
+          <geometry><box><size>0.5 9.0 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -268,13 +268,13 @@
     <!-- Vertical wall: x=1, from y=-1 to y=1.5 (start zone right lower) -->
     <model name='wall_start_right_lower'>
       <static>true</static>
-      <pose>1 0.25 0.5 0 0 0</pose>
+      <pose>1 0.64 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>0.15 2.65 1.0</size></box></geometry>
+          <geometry><box><size>0.15 1.87 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>0.15 2.65 1.0</size></box></geometry>
+          <geometry><box><size>0.15 1.87 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -287,13 +287,13 @@
     <!-- Gap between x=0.3 and x=0.7 for passage out -->
     <model name='wall_start_bottom_left'>
       <static>true</static>
-      <pose>-0.35 -1 0.5 0 0 0</pose>
+      <pose>-0.625 -1 0.5 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><box><size>1.45 0.15 1.0</size></box></geometry>
+          <geometry><box><size>1.05 0.15 1.0</size></box></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><box><size>1.45 0.15 1.0</size></box></geometry>
+          <geometry><box><size>1.05 0.15 1.0</size></box></geometry>
           <material>
             <ambient>0.3 0.3 0.3 1</ambient>
             <diffuse>0.3 0.3 0.3 1</diffuse>
@@ -852,5 +852,23 @@
     <!-- ============================================================ -->
     <!-- Robot spawns at (0, 0, 0.07) in the start zone -->
 
+
+    <!-- Close left side of start zone -->
+    <model name='wall_start_left_close'>
+      <static>true</static>
+      <pose>-1.0 0.5 0.5 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry><box><size>0.5 3.15 1.0</size></box></geometry>
+        </collision>
+        <visual name='visual'>
+          <geometry><box><size>0.5 3.15 1.0</size></box></geometry>
+          <material>
+            <ambient>0.3 0.3 0.3 1</ambient>
+            <diffuse>0.3 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
   </world>
 </sdf>
