@@ -226,3 +226,8 @@ docking_server:
       plugin: "opennav_docking::SimpleChargingDock"
       use_external_detection_pose: true
       charging_threshold: 0.5
+    docks: ["home_dock"]
+    home_dock:
+      type: "simple_charging_dock"
+      frame: "base_link"
+      pose: [0.0, 0.0, 0.0]
