@@ -32,9 +32,10 @@
             <material name="deep_black"/>
         </visual>
         <collision>
-            <origin xyz="0 0 0" rpy="0 0 0" />
+            <origin xyz="0 0 0.025" rpy="0 0 0" />
             <geometry>
-                <mesh filename="file://$(find ${package_name})/meshes/base_link.STL" />
+                <!-- Use box instead of mesh for reliable collision detection -->
+                <box size="0.25 0.20 0.08" />
             </geometry>
         </collision>
     </link>

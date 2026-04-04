@@ -2,32 +2,19 @@
 <sdf version="1.9">
   <world name="ugv_arena">
 
-    <!-- ============================================================ -->
-    <!--  Plugins                                                      -->
-    <!-- ============================================================ -->
-    <plugin filename="ignition-gazebo-physics-system"
-            name="ignition::gazebo::systems::Physics">
-    </plugin>
-    <plugin filename="ignition-gazebo-user-commands-system"
-            name="ignition::gazebo::systems::UserCommands">
-    </plugin>
-    <plugin filename="ignition-gazebo-scene-broadcaster-system"
-            name="ignition::gazebo::systems::SceneBroadcaster">
-    </plugin>
-    <plugin filename="ignition-gazebo-imu-system"
-            name="ignition::gazebo::systems::Imu">
-    </plugin>
-    <plugin filename="ignition-gazebo-sensors-system"
-            name="ignition::gazebo::systems::Sensors">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+    <plugin filename="ignition-gazebo-imu-system" name="ignition::gazebo::systems::Imu"/>
+    <plugin filename="ignition-gazebo-sensors-system" name="ignition::gazebo::systems::Sensors">
       <render_engine>ogre</render_engine>
     </plugin>
-    <plugin filename="ignition-gazebo-contact-system"
-            name="ignition::gazebo::systems::Contact">
-    </plugin>
+    <plugin filename="ignition-gazebo-contact-system" name="ignition::gazebo::systems::Contact"/>
 
-    <!-- ============================================================ -->
-    <!--  Scene & Lighting                                             -->
-    <!-- ============================================================ -->
     <scene>
       <ambient>0.6 0.6 0.6 1</ambient>
       <background>0.7 0.8 0.95 1</background>
@@ -36,890 +23,324 @@
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
-      <pose>0 0 15 0 0 0</pose>
+      <pose>6 4 15 0 0 0</pose>
       <diffuse>0.9 0.9 0.9 1</diffuse>
       <specular>0.3 0.3 0.3 1</specular>
       <direction>-0.5 0.3 -0.9</direction>
     </light>
-
-    <light type="directional" name="fill_light">
+    <light type="directional" name="fill">
       <cast_shadows>false</cast_shadows>
-      <pose>0 0 12 0 0 0</pose>
+      <pose>6 4 12 0 0 0</pose>
       <diffuse>0.4 0.4 0.4 1</diffuse>
       <specular>0.1 0.1 0.1 1</specular>
       <direction>0.5 -0.3 -0.8</direction>
     </light>
 
-    <!-- ============================================================ -->
-    <!--  Ground Plane                                                 -->
-    <!-- ============================================================ -->
-    <model name="ground_plane">
+    <!-- Ground -->
+    <model name="ground">
       <static>true</static>
       <link name="link">
-        <collision name="collision">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>20 20</size>
-            </plane>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>20 20</size>
-            </plane>
-          </geometry>
-          <material>
-            <ambient>0.55 0.55 0.55 1</ambient>
-            <diffuse>0.6 0.6 0.6 1</diffuse>
-          </material>
+        <collision name="c"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision>
+        <visual name="v"><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <!-- ============================================================ -->
-    <!--  Zone Floor Markings                                          -->
-    <!-- ============================================================ -->
+    <!-- START zone (green) cell(0,0) -->
+    <model name="start_zone"><static>true</static>
+      <pose>0.75 0.75 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
+        <material><ambient>0.2 0.8 0.2 1</ambient><diffuse>0.2 0.8 0.2 1</diffuse></material></visual></link>
+    </model>
 
-    <!-- Start zone: green floor at (0, 0) -->
-    <model name="start_zone">
+    <!-- TRUE GOAL (gold) cell(7,0) -->
+    <model name="true_goal"><static>true</static>
+      <pose>10.5 0.75 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
+        <material><ambient>0.9 0.7 0.1 1</ambient><diffuse>0.9 0.7 0.1 1</diffuse></material></visual></link>
+    </model>
+
+    <!-- FALSE GOAL cell(6,2) -->
+    <model name="false_goal"><static>true</static>
+      <pose>9.75 3.75 0.005 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>1.2 1.2 0.01</size></box></geometry>
+        <material><ambient>0.85 0.65 0.1 1</ambient><diffuse>0.85 0.65 0.1 1</diffuse></material></visual></link>
+    </model>
+
+    <!-- ARENA WALLS (each wall is a separate static model) -->
+    <model name="w1">
       <static>true</static>
-      <pose>0 0 0.005 0 0 0</pose>
+      <pose>6.000 -0.250 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>1.2 1.2 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.1 0.7 0.1 1</ambient>
-            <diffuse>0.15 0.8 0.15 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>13.000 0.5 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>13.000 0.5 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- True goal zone: gold floor at (9.0, 0.75) -->
-    <model name="true_goal_zone">
+    <model name="w2">
       <static>true</static>
-      <pose>9.0 0.75 0.005 0 0 0</pose>
+      <pose>6.000 9.250 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>1.2 1.2 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.85 0.65 0.0 1</ambient>
-            <diffuse>0.95 0.75 0.1 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>13.000 0.5 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>13.000 0.5 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- False goal zone: similar gold at (9.0, 3.0) -->
-    <model name="false_goal_zone">
+    <model name="w3">
       <static>true</static>
-      <pose>9.0 3.0 0.005 0 0 0</pose>
+      <pose>-0.250 4.500 0.75 0 0 1.5708</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>1.2 1.2 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.80 0.60 0.0 1</ambient>
-            <diffuse>0.90 0.70 0.1 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>10.000 0.5 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>10.000 0.5 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- T-junction marking at col=3, row=3 -> (3.75, 3.75) -->
-    <model name="t_junction_1">
+    <model name="w4">
       <static>true</static>
-      <pose>3.75 3.75 0.005 0 0 0</pose>
+      <pose>12.250 4.500 0.75 0 0 1.5708</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.6 0.6 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.3 0.3 0.6 1</ambient>
-            <diffuse>0.4 0.4 0.7 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>10.000 0.5 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>10.000 0.5 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- T-junction marking at col=5, row=3 -> (6.75, 3.75) -->
-    <model name="t_junction_2">
+    <model name="w5">
       <static>true</static>
-      <pose>6.75 3.75 0.005 0 0 0</pose>
+      <pose>7.500 1.500 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.6 0.6 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.3 0.3 0.6 1</ambient>
-            <diffuse>0.4 0.4 0.7 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>3.150 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>3.150 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ============================================================ -->
-    <!--  Arena Walls (single model, multiple links)                   -->
-    <!--                                                               -->
-    <!--  Grid: 8 cols (0-7) x 6 rows (0-5), each cell 1.5m x 1.5m   -->
-    <!--  Arena spans x: [-1.5, 10.5], y: [-1.5, 7.5]                 -->
-    <!--  Coordinate: x = col*1.5 - 0.75, y = row*1.5 - 0.75         -->
-    <!--                                                               -->
-    <!--  Horizontal walls: length along X, no rotation               -->
-    <!--  Vertical walls:   length along Y, rotation 1.5708 (90 deg) -->
-    <!--  Wall thickness: 0.15m, height: 1.5m                         -->
-    <!-- ============================================================ -->
-    <model name="arena_walls">
+    <model name="w6">
       <static>true</static>
-      <pose>0 0 0 0 0 0</pose>
-
-      <!-- ========== OUTER BOUNDARY ========== -->
-
-      <!-- Bottom wall: y = -1.5, length = 12.15 (with overlap) -->
-      <link name="wall_outer_bottom">
-        <pose>4.5 -1.5 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>12.15 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>12.15 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- Top wall: y = 7.5 -->
-      <link name="wall_outer_top">
-        <pose>4.5 7.5 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>12.15 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>12.15 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- Left wall: x = -1.5, length = 9.15 (with overlap) -->
-      <link name="wall_outer_left">
-        <pose>-1.5 3.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>9.15 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>9.15 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- Right wall: x = 10.5 -->
-      <link name="wall_outer_right">
-        <pose>10.5 3.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>9.15 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>9.15 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- ========== INTERNAL HORIZONTAL WALLS ========== -->
-
-      <!-- R0/R1 boundary (y=0.75): col=0 left portion -->
-      <link name="wall_h01_a">
-        <pose>-0.75 0.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R0/R1 boundary (y=0.75): col=4 to col=5 -->
-      <link name="wall_h01_col45">
-        <pose>6.75 0.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R1/R2 boundary (y=2.25): col=2 -->
-      <link name="wall_h12_col2">
-        <pose>2.25 2.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R1/R2 boundary (y=2.25): col=3 -->
-      <link name="wall_h12_col3">
-        <pose>3.75 2.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R1/R2 boundary (y=2.25): col=5 -->
-      <link name="wall_h12_col5">
-        <pose>6.75 2.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R2/R3 boundary (y=3.75): col=3-4 -->
-      <link name="wall_h23_col34">
-        <pose>5.25 3.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R2/R3 boundary (y=3.75): col=6 false goal enclosure top -->
-      <link name="wall_h23_col6">
-        <pose>8.25 3.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R3/R4 boundary (y=5.25): col=1 -->
-      <link name="wall_h34_col1">
-        <pose>0.75 5.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R3/R4 boundary (y=5.25): col=3 -->
-      <link name="wall_h34_col3">
-        <pose>3.75 5.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R3/R4 boundary (y=5.25): col=5 -->
-      <link name="wall_h34_col5">
-        <pose>6.75 5.25 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R4/R5 boundary (y=6.75): col=1 -->
-      <link name="wall_h45_col1">
-        <pose>0.75 6.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.35 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.35 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R4/R5 boundary (y=6.75): col=4 loop trap -->
-      <link name="wall_h45_col4">
-        <pose>5.25 6.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R4/R5 boundary (y=6.75): col=5 loop trap connector -->
-      <link name="wall_h45_col5">
-        <pose>6.75 6.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- R4/R5 boundary (y=6.75): col=6 loop trap -->
-      <link name="wall_h45_col6">
-        <pose>8.25 6.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- Dead end cap: top of col=0 dead-end corridor -->
-      <link name="wall_deadend_cap">
-        <pose>-0.75 6.75 0.75 0 0 0</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- ========== INTERNAL VERTICAL WALLS (N-S, rotated 90deg) ========== -->
-
-      <!-- col0/col1 boundary (x=0.75): rows 2-5 dead end corridor -->
-      <link name="wall_v01_upper">
-        <pose>0.75 5.25 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>4.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>4.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col1/col2 boundary (x=2.25): rows 0-1 -->
-      <link name="wall_v12_lower">
-        <pose>2.25 0.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col1/col2 boundary (x=2.25): rows 3-4 -->
-      <link name="wall_v12_mid">
-        <pose>2.25 4.5 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col2/col3 boundary (x=3.75): rows 0-2 -->
-      <link name="wall_v23_lower">
-        <pose>3.75 0.75 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col2/col3 boundary (x=3.75): row 5 top section -->
-      <link name="wall_v23_top">
-        <pose>3.75 6.75 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col3/col4 boundary (x=5.25): rows 0-1 -->
-      <link name="wall_v34_lower">
-        <pose>5.25 0.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col3/col4 boundary (x=5.25): rows 4-5 loop trap left wall -->
-      <link name="wall_v34_upper">
-        <pose>5.25 6.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col4/col5 boundary (x=6.75): rows 1-2 -->
-      <link name="wall_v45_low">
-        <pose>6.75 1.5 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col4/col5 boundary (x=6.75): rows 3-4 loop trap inner -->
-      <link name="wall_v45_mid">
-        <pose>6.75 4.5 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col5/col6 boundary (x=8.25): rows 0-1 -->
-      <link name="wall_v56_lower">
-        <pose>8.25 0.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>3.0 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col5/col6 boundary (x=8.25): row 2 false goal enclosure -->
-      <link name="wall_v56_false_goal">
-        <pose>8.25 3.0 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- col6/col7 boundary (x=9.75): rows 2-5 -->
-      <link name="wall_v67_upper">
-        <pose>9.75 4.5 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>4.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>4.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-      <!-- Narrow passage wall at col=5/6 row=3-4 inner -->
-      <link name="wall_narrow_1">
-        <pose>7.5 5.25 0.75 0 0 1.5708</pose>
-        <collision name="collision">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>1.5 0.15 1.5</size></box></geometry>
-          <material>
-            <ambient>0.35 0.35 0.35 1</ambient>
-            <diffuse>0.4 0.4 0.4 1</diffuse>
-          </material>
-        </visual>
-      </link>
-
-    </model>
-
-    <!-- ============================================================ -->
-    <!--  ArUco Markers (white boxes 0.3x0.3x0.01)                    -->
-    <!-- ============================================================ -->
-
-    <!-- ArUco 0: col=2, row=0 -> (2.25, -0.375, 0.7) -->
-    <model name="aruco_marker_0">
-      <static>true</static>
-      <pose>2.25 -0.375 0.7 0 0 0</pose>
+      <pose>3.750 3.000 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.3 0.3 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>1.0 1.0 1.0 1</ambient>
-            <diffuse>1.0 1.0 1.0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ArUco 1: col=7, row=0 -> (9.75, -0.375, 0.7) -->
-    <model name="aruco_marker_1">
+    <model name="w7">
       <static>true</static>
-      <pose>9.75 -0.375 0.7 0 0 0</pose>
+      <pose>6.750 3.000 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.3 0.3 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>1.0 1.0 1.0 1</ambient>
-            <diffuse>1.0 1.0 1.0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ArUco 2: col=3, row=5 -> (3.75, 6.75, 0.7) -->
-    <model name="aruco_marker_2">
+    <model name="w8">
       <static>true</static>
-      <pose>3.75 6.75 0.7 0 0 0</pose>
+      <pose>3.750 4.500 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.3 0.3 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>1.0 1.0 1.0 1</ambient>
-            <diffuse>1.0 1.0 1.0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ArUco 3: col=4, row=2 -> (5.25, 2.25, 0.7) -->
-    <model name="aruco_marker_3">
+    <model name="w9">
       <static>true</static>
-      <pose>5.25 2.25 0.7 0 0 0</pose>
+      <pose>4.500 6.000 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.3 0.3 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>1.0 1.0 1.0 1</ambient>
-            <diffuse>1.0 1.0 1.0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>3.150 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>3.150 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ============================================================ -->
-    <!--  Directional Signs (colored boxes 0.25x0.25x0.01)            -->
-    <!-- ============================================================ -->
-
-    <!-- FORWARD sign (cyan) at (3.0, 4.5, 0.7) -->
-    <model name="sign_forward">
+    <model name="w10">
       <static>true</static>
-      <pose>3.0 4.5 0.7 0 0 0</pose>
+      <pose>9.750 6.000 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 1</ambient>
-            <diffuse>0 0.9 0.9 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- RIGHT sign (blue) at (4.5, 0, 0.7) -->
-    <model name="sign_right">
+    <model name="w11">
       <static>true</static>
-      <pose>4.5 0 0.7 0 0 0</pose>
+      <pose>1.500 7.500 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 1</ambient>
-            <diffuse>0 0 0.9 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>3.150 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>3.150 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- LEFT misleading sign (green) at (0.75, 1.5, 0.7) -->
-    <model name="sign_left_misleading">
+    <model name="w12">
       <static>true</static>
-      <pose>0.75 1.5 0.7 0 0 0</pose>
+      <pose>9.000 7.500 0.75 0 0 0</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0 1</ambient>
-            <diffuse>0 0.9 0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>3.150 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>3.150 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- STOP sign (red) at (6.0, 0, 0.7) -->
-    <model name="sign_stop">
+    <model name="w13">
       <static>true</static>
-      <pose>6.0 0 0.7 0 0 0</pose>
+      <pose>1.500 3.750 0.75 0 0 1.5708</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.8 0 0 1</ambient>
-            <diffuse>0.9 0 0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>7.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>7.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- GOAL sign (orange) at (7.5, 0, 0.7) -->
-    <model name="sign_goal">
+    <model name="w14">
       <static>true</static>
-      <pose>7.5 0 0.7 0 0 0</pose>
+      <pose>3.000 0.750 0.75 0 0 1.5708</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.9 0.5 0 1</ambient>
-            <diffuse>1.0 0.6 0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- INPLACE_ROTATION sign (yellow) at (6.0, 6.0, 0.7) -->
-    <model name="sign_inplace_rotation">
+    <model name="w15">
       <static>true</static>
-      <pose>6.0 6.0 0.7 0 0 0</pose>
+      <pose>3.000 3.750 0.75 0 0 1.5708</pose>
       <link name="link">
-        <visual name="visual">
-          <geometry>
-            <box><size>0.25 0.25 0.01</size></box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0 1</ambient>
-            <diffuse>0.9 0.9 0 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
-
-    <!-- ============================================================ -->
-    <!--  Static Obstacles (brown boxes 0.3x0.3x0.3)                  -->
-    <!-- ============================================================ -->
-
-    <model name="obstacle_1">
+    <model name="w16">
       <static>true</static>
-      <pose>2.25 3.75 0.15 0 0 0</pose>
+      <pose>4.500 2.250 0.75 0 0 1.5708</pose>
       <link name="link">
-        <collision name="collision">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material>
-            <ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.6 0.35 0.15 1</diffuse>
-          </material>
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w17">
+      <static>true</static>
+      <pose>4.500 8.250 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w18">
+      <static>true</static>
+      <pose>6.000 5.250 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>4.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w19">
+      <static>true</static>
+      <pose>7.500 6.750 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>4.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w20">
+      <static>true</static>
+      <pose>9.000 3.000 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>3.150 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>3.150 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w21">
+      <static>true</static>
+      <pose>9.000 6.750 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>1.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>1.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="w22">
+      <static>true</static>
+      <pose>10.500 2.250 0.75 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="c"><geometry><box><size>4.650 0.2 1.5</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>4.650 0.2 1.5</size></box></geometry>
+          <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
     </model>
 
-    <model name="obstacle_2">
-      <static>true</static>
-      <pose>5.25 0.75 0.15 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material>
-            <ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.6 0.35 0.15 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <!-- ArUco markers (4 white boxes on walls) -->
+    <model name="aruco_0"><static>true</static><pose>3.0 0.15 0.7 1.5708 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
+        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
+    <model name="aruco_1"><static>true</static><pose>7.5 0.15 0.7 1.5708 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
+        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
+    <model name="aruco_2"><static>true</static><pose>5.25 8.5 0.7 1.5708 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
+        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
+    <model name="aruco_3"><static>true</static><pose>6.0 3.75 0.7 1.5708 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
+        <material><ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse></material></visual></link></model>
 
-    <model name="obstacle_3">
-      <static>true</static>
-      <pose>6.75 6.0 0.15 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material>
-            <ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.6 0.35 0.15 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <!-- 6 Directional signs (colored boxes) -->
+    <model name="sign_forward"><static>true</static><pose>2.25 1.5 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material></visual></link></model>
+    <model name="sign_right"><static>true</static><pose>3.75 0.75 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material></visual></link></model>
+    <model name="sign_left_trap"><static>true</static><pose>0.75 2.25 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material></visual></link></model>
+    <model name="sign_stop"><static>true</static><pose>8.25 0.75 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material></visual></link></model>
+    <model name="sign_goal"><static>true</static><pose>9.75 0.75 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material></visual></link></model>
+    <model name="sign_rotate"><static>true</static><pose>6.75 6.75 0.7 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+        <material><ambient>0.8 0.8 0 1</ambient><diffuse>0.8 0.8 0 1</diffuse></material></visual></link></model>
 
-    <model name="obstacle_4">
-      <static>true</static>
-      <pose>8.25 1.5 0.15 0 0 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-        </collision>
-        <visual name="visual">
-          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
-          <material>
-            <ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.6 0.35 0.15 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
+    <!-- Static obstacles (4 brown boxes) -->
+    <model name="obs1"><static>true</static><pose>2.25 4.5 0.15 0 0 0.3</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
+    <model name="obs2"><static>true</static><pose>5.25 1.5 0.15 0 0 0.7</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
+    <model name="obs3"><static>true</static><pose>8.25 5.25 0.15 0 0 0.5</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
+    <model name="obs4"><static>true</static><pose>3.75 7.5 0.15 0 0 1.1</pose>
+      <link name="l"><collision name="c"><geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size></box></geometry>
+          <material><ambient>0.5 0.3 0.1 1</ambient><diffuse>0.5 0.3 0.1 1</diffuse></material></visual></link></model>
 
   </world>
 </sdf>
