@@ -217,3 +217,12 @@ collision_monitor:
       min_height: 0.05
       max_height: 0.5
       enabled: true
+
+docking_server:
+  ros__parameters:
+    use_sim_time: true
+    dock_plugins: ["simple_charging_dock"]
+    simple_charging_dock:
+      plugin: "opennav_docking::SimpleChargingDock"
+      use_external_detection_pose: true
+      charging_threshold: 0.5
