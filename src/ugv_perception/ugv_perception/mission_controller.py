@@ -72,8 +72,9 @@ REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
 SAFE_RANGE_MAX: Final[float] = 10.0
 
 # Wall-follower thresholds (tuned for 1.85m corridors at higher speed)
-FRONT_STOP: Final[float] = 0.30
-FRONT_SLOW: Final[float] = 0.50
+FRONT_STOP: Final[float] = 0.35
+FRONT_SLOW: Final[float] = 0.55
+FRONT_REVERSE: Final[float] = 0.20       # too close — reverse while turning
 WALL_CLOSE: Final[float] = 0.30
 WALL_FAR: Final[float] = 0.80
 
@@ -188,13 +189,18 @@ def _wall_follow_cmd(
     """
     r = regions
 
+    if r.front < FRONT_REVERSE:
+        # Way too close — reverse while turning hard
+        turn = MAX_ANGULAR if side == "right" else -MAX_ANGULAR
+        return -0.15, turn, prev_error, integral_error
+
     if r.front < FRONT_STOP:
         turn = MAX_ANGULAR if side == "right" else -MAX_ANGULAR
         return 0.0, turn, prev_error, integral_error
 
     if r.front < FRONT_SLOW:
         turn = MAX_ANGULAR * 0.6 if side == "right" else -MAX_ANGULAR * 0.6
-        return 0.08, turn, prev_error, integral_error
+        return 0.10, turn, prev_error, integral_error
 
     if side == "right":
         # Right-wall following
@@ -268,6 +274,7 @@ class MissionController(Node):
         self._cell_visit_count: dict[tuple[int, int], int] = defaultdict(int)
         self._last_cell: tuple[int, int] = (0, 0)
         self._override_flipped_cell: tuple[int, int] | None = None
+        self._last_override_flip_time: float = 0.0  # cooldown for override flips
 
         # -- loop detection (position history) --
         self._position_history: list[PositionRecord] = []
@@ -575,9 +582,12 @@ class MissionController(Node):
         """
         cell = _pos_to_cell(self._x, self._y)
 
-        # Only flip wall-follow side once when first entering this cell
-        if self._override_flipped_cell != cell:
+        # Only flip wall-follow side once per cell AND with 5s cooldown
+        now = time.monotonic()
+        if (self._override_flipped_cell != cell
+                and now - self._last_override_flip_time > 5.0):
             self._override_flipped_cell = cell
+            self._last_override_flip_time = now
             old_side = self._wall_follow_side
             self._wall_follow_side = (
                 "left" if old_side == "right" else "right")
