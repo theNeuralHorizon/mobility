@@ -75,8 +75,7 @@ lidar_sensor = """
             <max>30.0</max>
             <resolution>0.01</resolution>
           </range>
-          <noise>
-            <type>gaussian</type>
+          <noise type='gaussian'>
             <mean>0</mean>
             <stddev>0.005</stddev>
           </noise>
@@ -113,14 +112,14 @@ lidar_sensor = """
         <update_rate>50</update_rate>
         <imu>
           <angular_velocity>
-            <x><noise><type>gaussian</type><mean>0</mean><stddev>0.0002</stddev></noise></x>
-            <y><noise><type>gaussian</type><mean>0</mean><stddev>0.0002</stddev></noise></y>
-            <z><noise><type>gaussian</type><mean>0</mean><stddev>0.0002</stddev></noise></z>
+            <x><noise type='gaussian'><mean>0</mean><stddev>0.0002</stddev></noise></x>
+            <y><noise type='gaussian'><mean>0</mean><stddev>0.0002</stddev></noise></y>
+            <z><noise type='gaussian'><mean>0</mean><stddev>0.0002</stddev></noise></z>
           </angular_velocity>
           <linear_acceleration>
-            <x><noise><type>gaussian</type><mean>0</mean><stddev>0.017</stddev></noise></x>
-            <y><noise><type>gaussian</type><mean>0</mean><stddev>0.017</stddev></noise></y>
-            <z><noise><type>gaussian</type><mean>0</mean><stddev>0.017</stddev></noise></z>
+            <x><noise type='gaussian'><mean>0</mean><stddev>0.017</stddev></noise></x>
+            <y><noise type='gaussian'><mean>0</mean><stddev>0.017</stddev></noise></y>
+            <z><noise type='gaussian'><mean>0</mean><stddev>0.017</stddev></noise></z>
           </linear_acceleration>
         </imu>
         <always_on>true</always_on>
