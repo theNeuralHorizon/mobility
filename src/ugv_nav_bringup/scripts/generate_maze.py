@@ -68,8 +68,7 @@ print(line)
 
 # ---- Generate wall collisions and visuals --------------------------------
 
-wall_links: list[str] = []
-wall_visuals: list[str] = []
+wall_models: list[str] = []
 wall_id = 0
 
 
@@ -77,25 +76,25 @@ def add_wall(
     x: float, y: float, length: float,
     vertical: bool = False, thick: float = WALL_THICK,
 ) -> None:
-    """Match warehouse depot_collision format exactly: collision-only, no surface tags."""
+    """Each wall is its own static model with collision + visual in one link."""
     global wall_id
     wall_id += 1
     rot = "1.5708" if vertical else "0"
-    # Collision only (no surface tags - matches working warehouse format)
-    wall_links.append(
-        f'        <collision name="w{wall_id}">\n'
-        f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
-        f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
-        f'        </collision>'
-    )
-    # Visual separate
-    wall_visuals.append(
-        f'        <visual name="wv{wall_id}">\n'
-        f'          <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
-        f'          <geometry><box><size>{length:.3f} {thick} {WALL_HEIGHT}</size></box></geometry>\n'
+    wall_models.append(
+        f'    <model name="wall_{wall_id}"><static>true</static>\n'
+        f'      <pose>{x:.3f} {y:.3f} {WALL_HEIGHT / 2} 0 0 {rot}</pose>\n'
+        f'      <link name="link">\n'
+        f'        <collision name="c"><geometry><box>'
+        f'<size>{length:.3f} {thick} {WALL_HEIGHT}</size>'
+        f'</box></geometry></collision>\n'
+        f'        <visual name="v"><geometry><box>'
+        f'<size>{length:.3f} {thick} {WALL_HEIGHT}</size>'
+        f'</box></geometry>\n'
         f'          <material><ambient>0.35 0.35 0.35 1</ambient>'
         f'<diffuse>0.4 0.4 0.4 1</diffuse></material>\n'
-        f'        </visual>'
+        f'        </visual>\n'
+        f'      </link>\n'
+        f'    </model>'
     )
 
 
@@ -335,25 +334,8 @@ sdf = f'''<?xml version="1.0" ?>
       </visual></link>
     </model>
 
-    <!-- ARENA WALLS: collision model (matches warehouse depot_collision format) -->
-    <model name="arena_collision">
-      <static>1</static>
-      <pose>0 0 0 0 0 0</pose>
-      <link name="collision_link">
-        <pose>0 0 0 0 0 0</pose>
-{chr(10).join(wall_links)}
-      </link>
-    </model>
-
-    <!-- ARENA WALLS: visual model (separate from collision) -->
-    <model name="arena_visual">
-      <static>1</static>
-      <pose>0 0 0 0 0 0</pose>
-      <link name="visual_link">
-        <pose>0 0 0 0 0 0</pose>
-{chr(10).join(wall_visuals)}
-      </link>
-    </model>
+    <!-- ARENA WALLS: each wall is its own static model with collision+visual -->
+{chr(10).join(wall_models)}
 
     <!-- ============================================================== -->
     <!-- ArUco markers ON wall surfaces, camera height z=0.15           -->
