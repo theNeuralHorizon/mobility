@@ -48,7 +48,9 @@ MAX_LINEAR: Final[float] = 0.22
 MAX_ANGULAR: Final[float] = 0.6
 WALL_DIST: Final[float] = 0.4
 KP: Final[float] = 1.0
+KI: Final[float] = 0.05
 KD: Final[float] = 0.5
+INTEGRAL_MAX: Final[float] = 1.0
 
 # Stuck detection
 STUCK_TIMEOUT: Final[float] = 7.0
@@ -176,48 +178,54 @@ def _regions_from_scan(ranges: list[float]) -> LidarRegions:
 def _wall_follow_cmd(
     regions: LidarRegions,
     prev_error: float,
+    integral_error: float = 0.0,
     side: str = "right",
-) -> tuple[float, float, float]:
-    """Compute (linear, angular, new_prev_error) using PD wall-follower.
+) -> tuple[float, float, float, float]:
+    """Compute (linear, angular, new_prev_error, new_integral) using PID wall-follower.
 
     Supports both right-wall and left-wall following via the 'side' parameter.
+    Returns a 4-tuple: (linear, angular, new_prev_error, new_integral_error).
     """
     r = regions
 
     if r.front < FRONT_STOP:
         turn = MAX_ANGULAR if side == "right" else -MAX_ANGULAR
-        return 0.0, turn, prev_error
+        return 0.0, turn, prev_error, integral_error
 
     if r.front < FRONT_SLOW:
         turn = MAX_ANGULAR * 0.6 if side == "right" else -MAX_ANGULAR * 0.6
-        return 0.08, turn, prev_error
+        return 0.08, turn, prev_error, integral_error
 
     if side == "right":
         # Right-wall following
         if r.fright < WALL_CLOSE:
-            return MAX_LINEAR * 0.7, 0.3, prev_error
+            return MAX_LINEAR * 0.7, 0.3, prev_error, integral_error
         if r.right > WALL_FAR and r.fright > WALL_FAR:
-            return MAX_LINEAR, -0.15, prev_error
+            return MAX_LINEAR, -0.15, prev_error, integral_error
         if r.right < SAFE_RANGE_MAX:
             error = WALL_DIST - r.right
             d_error = error - prev_error
-            angular = _clamp(KP * error + KD * d_error,
+            new_integral = _clamp(integral_error + error,
+                                  -INTEGRAL_MAX, INTEGRAL_MAX)
+            angular = _clamp(KP * error + KI * new_integral + KD * d_error,
                              -MAX_ANGULAR, MAX_ANGULAR)
-            return MAX_LINEAR, angular, error
-        return MAX_LINEAR, -0.2, prev_error
+            return MAX_LINEAR, angular, error, new_integral
+        return MAX_LINEAR, -0.2, prev_error, integral_error
     else:
         # Left-wall following (mirror of right)
         if r.fleft < WALL_CLOSE:
-            return MAX_LINEAR * 0.7, -0.3, prev_error
+            return MAX_LINEAR * 0.7, -0.3, prev_error, integral_error
         if r.left > WALL_FAR and r.fleft > WALL_FAR:
-            return MAX_LINEAR, 0.15, prev_error
+            return MAX_LINEAR, 0.15, prev_error, integral_error
         if r.left < SAFE_RANGE_MAX:
             error = WALL_DIST - r.left
             d_error = error - prev_error
-            angular = _clamp(-(KP * error + KD * d_error),
+            new_integral = _clamp(integral_error + error,
+                                  -INTEGRAL_MAX, INTEGRAL_MAX)
+            angular = _clamp(-(KP * error + KI * new_integral + KD * d_error),
                              -MAX_ANGULAR, MAX_ANGULAR)
-            return MAX_LINEAR, angular, error
-        return MAX_LINEAR, 0.2, prev_error
+            return MAX_LINEAR, angular, error, new_integral
+        return MAX_LINEAR, 0.2, prev_error, integral_error
 
 
 # ---------------------------------------------------------------------------
@@ -252,12 +260,14 @@ class MissionController(Node):
 
         # -- PD wall-follow state --
         self._prev_wall_error: float = 0.0
+        self._wall_integral_error: float = 0.0
         self._wall_follow_side: str = "right"
 
         # -- visited-cell tracking --
         self._visited_cells: set[tuple[int, int]] = set()
         self._cell_visit_count: dict[tuple[int, int], int] = defaultdict(int)
         self._last_cell: tuple[int, int] = (0, 0)
+        self._override_flipped_cell: tuple[int, int] | None = None
 
         # -- loop detection (position history) --
         self._position_history: list[PositionRecord] = []
@@ -414,11 +424,15 @@ class MissionController(Node):
 
     def _validate_sign_direction(self, direction: str) -> bool:
         """Reject misleading signs using LiDAR cross-check."""
-        if direction == "LEFT" and self._regions.left < 0.4:
+        r = self._regions
+        if direction == "LEFT" and (r.left < 0.4 or r.fleft < 0.4):
             self.get_logger().warn("LEFT sign rejected - wall on left")
             return False
-        if direction == "RIGHT" and self._regions.right < 0.4:
+        if direction == "RIGHT" and (r.right < 0.4 or r.fright < 0.4):
             self.get_logger().warn("RIGHT sign rejected - wall on right")
+            return False
+        if direction == "FORWARD" and r.front < 0.4:
+            self.get_logger().warn("FORWARD sign rejected - wall ahead")
             return False
         return True
 
@@ -511,9 +525,11 @@ class MissionController(Node):
             self._do_exploring_override()
             return
 
-        linear, angular, new_error = _wall_follow_cmd(
-            self._regions, self._prev_wall_error, self._wall_follow_side)
+        linear, angular, new_error, new_integral = _wall_follow_cmd(
+            self._regions, self._prev_wall_error,
+            self._wall_integral_error, self._wall_follow_side)
         self._prev_wall_error = new_error
+        self._wall_integral_error = new_integral
         self._publish_vel(linear, angular)
 
     def _do_gap_drive(self) -> None:
@@ -547,15 +563,22 @@ class MissionController(Node):
     def _do_exploring_override(self) -> None:
         """Override wall-follower when current cell revisited too often.
 
-        Flips wall-following side and steers toward open space.
+        Flips wall-following side ONCE per cell entry, then steers toward
+        open space.  Previous version flipped every tick (10 Hz), causing
+        oscillation.
         """
-        # Flip wall-following side to break the loop pattern
-        old_side = self._wall_follow_side
-        self._wall_follow_side = (
-            "left" if old_side == "right" else "right")
-        self.get_logger().info(
-            f"Cell revisit override: switching wall-follow "
-            f"{old_side} -> {self._wall_follow_side}")
+        cell = _pos_to_cell(self._x, self._y)
+
+        # Only flip wall-follow side once when first entering this cell
+        if self._override_flipped_cell != cell:
+            self._override_flipped_cell = cell
+            old_side = self._wall_follow_side
+            self._wall_follow_side = (
+                "left" if old_side == "right" else "right")
+            self._wall_integral_error = 0.0  # reset integral on side switch
+            self.get_logger().info(
+                f"Cell revisit override: switching wall-follow "
+                f"{old_side} -> {self._wall_follow_side}")
 
         r = self._regions
 
@@ -801,16 +824,24 @@ class MissionController(Node):
         """PANIC: Aggressive escape after 3+ consecutive stucks.
 
         Phase 1 (0-2s): Hard reverse
-        Phase 2 (2-5s): Turn ~180 degrees
+        Phase 2 (2-5s): Turn ~180 degrees (using saved target yaw)
         Phase 3 (5-8s): Drive forward into new area
         """
         if elapsed < 2.0:
             self._publish_vel(-MAX_LINEAR, 0.0)
         elif elapsed < 5.0:
-            target = _normalize_angle(self._yaw + math.pi)
+            # Use the target yaw saved at recovery start, NOT a live
+            # recomputation.  The old code recomputed yaw+pi every tick,
+            # so the error was always pi and the robot just spun.
+            target = _normalize_angle(
+                self._recovery_target_yaw + math.pi)
             error = _normalize_angle(target - self._yaw)
-            angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
-            self._publish_vel(0.0, angular)
+            if abs(error) < 0.2:
+                # Close enough — skip to drive phase
+                self._publish_vel(0.0, 0.0)
+            else:
+                angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+                self._publish_vel(0.0, angular)
         elif elapsed < 8.0:
             # Drive forward, dodge walls
             if self._regions.front < FRONT_STOP:
@@ -822,25 +853,54 @@ class MissionController(Node):
             self._consecutive_stucks = 0
             self._finish_recovery()
 
+    def _find_least_visited_direction(self) -> float:
+        """Return angular velocity toward the least-visited neighbouring area.
+
+        Checks the 4 cardinal neighbours of the current cell and picks
+        the direction with the lowest visit count that also has open
+        LiDAR space.
+        """
+        cx, cy = _pos_to_cell(self._x, self._y)
+        candidates = [
+            ((cx + 1, cy), 0.0),      # east  → front
+            ((cx - 1, cy), math.pi),   # west  → behind
+            ((cx, cy + 1), math.pi / 2),   # north → left
+            ((cx, cy - 1), -math.pi / 2),  # south → right
+        ]
+        best_ang = 0.0
+        best_score = float('inf')
+        for cell, heading_offset in candidates:
+            visits = self._cell_visit_count.get(cell, 0)
+            if visits < best_score:
+                best_score = visits
+                target_yaw = _normalize_angle(self._yaw + heading_offset)
+                error = _normalize_angle(target_yaw - self._yaw)
+                best_ang = _clamp(error, -MAX_ANGULAR, MAX_ANGULAR)
+        return best_ang
+
     def _finish_recovery(self) -> None:
         self._recovery_index += 1
         self._last_move_time = time.monotonic()
         self._prev_wall_error = 0.0
+        self._wall_integral_error = 0.0
         # Flip wall-following side to explore differently
         old = self._wall_follow_side
         self._wall_follow_side = "left" if old == "right" else "right"
+        self._override_flipped_cell = None  # allow override to flip again
         self.get_logger().info(
             f"Recovery done: wall-follow {old} -> {self._wall_follow_side}")
         # POST-RECOVERY ESCAPE: drive toward gaps for 5 seconds
-        # This prevents wall-following from immediately returning to corner
         self._post_recovery_until = time.monotonic() + 5.0
         self.get_logger().info("Post-recovery gap drive: 5s")
-        # Clear history so loop detection does not immediately re-trigger
-        self._position_history.clear()
+        # DO NOT clear position history — loop detector needs continuity.
+        # Only reset the record timer so we don't get a stale gap.
         self._last_record_time = time.monotonic()
-        # Clear visited cells for fresh exploration after recovery
-        self._visited_cells.clear()
-        self._cell_visit_count.clear()
+        # DECAY visited-cell counts by 50% instead of wiping.
+        # This preserves memory of heavily-visited areas while giving
+        # the robot a chance to revisit lightly-visited cells.
+        for cell in list(self._cell_visit_count):
+            self._cell_visit_count[cell] = max(
+                1, self._cell_visit_count[cell] // 2)
         self._transition(State.EXPLORING)
 
     # ------------------------------------------------------------------

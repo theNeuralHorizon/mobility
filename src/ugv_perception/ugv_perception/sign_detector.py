@@ -111,9 +111,17 @@ class SignDetector(Node):
         """Detect directional sign via HSV color segmentation."""
         min_area = self.get_parameter("min_detection_area").value
         cooldown = self.get_parameter("cooldown_sec").value
-        max_area = (frame.shape[0] * frame.shape[1]) // 10
 
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        # Crop to top 60% of frame to exclude floor surfaces.
+        # Signs are mounted on posts at ~0.28m; the floor (green start
+        # zone, gold goal zone) fills the bottom of the image and causes
+        # false positives (e.g. green floor → LEFT, gold floor → GOAL).
+        h = frame.shape[0]
+        crop_h = int(h * 0.6)
+        roi = frame[:crop_h, :]
+        max_area = (roi.shape[0] * roi.shape[1]) // 10
+
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
         best_direction: str | None = None
         best_area = 0
