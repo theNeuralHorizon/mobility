@@ -44,15 +44,15 @@ from std_msgs.msg import Int32MultiArray, String
 #  Constants
 # ---------------------------------------------------------------------------
 
-MAX_LINEAR: Final[float] = 0.22
-MAX_ANGULAR: Final[float] = 0.6
-WALL_DIST: Final[float] = 0.4
-KP: Final[float] = 1.0
-KD: Final[float] = 0.5
+MAX_LINEAR: Final[float] = 0.35
+MAX_ANGULAR: Final[float] = 0.8
+WALL_DIST: Final[float] = 0.45
+KP: Final[float] = 0.8
+KD: Final[float] = 0.3
 
-# Stuck detection
-STUCK_TIMEOUT: Final[float] = 10.0
-STUCK_MOVE_THRESHOLD: Final[float] = 0.1
+# Stuck detection — generous timeout so robot has time to navigate
+STUCK_TIMEOUT: Final[float] = 30.0
+STUCK_MOVE_THRESHOLD: Final[float] = 0.15
 
 # Loop detection (position history based)
 LOOP_REVISIT_DIST: Final[float] = 1.0
@@ -69,11 +69,11 @@ REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
 # LiDAR
 SAFE_RANGE_MAX: Final[float] = 10.0
 
-# Wall-follower thresholds (proven working for ~0.9m corridors)
-FRONT_STOP: Final[float] = 0.25
-FRONT_SLOW: Final[float] = 0.40
-WALL_CLOSE: Final[float] = 0.30
-WALL_FAR: Final[float] = 0.80
+# Wall-follower thresholds (tuned for 1.85m corridors)
+FRONT_STOP: Final[float] = 0.35
+FRONT_SLOW: Final[float] = 0.55
+WALL_CLOSE: Final[float] = 0.35
+WALL_FAR: Final[float] = 1.2
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +200,8 @@ def _wall_follow_cmd(
         return MAX_LINEAR * 0.7, turn_sign * 0.3, prev_error
 
     if wall_side > WALL_FAR and fwall_side > WALL_FAR:
-        return MAX_LINEAR, -turn_sign * 0.15, prev_error
+        # Opening found — turn into it more aggressively
+        return MAX_LINEAR, -turn_sign * 0.35, prev_error
 
     if wall_side < SAFE_RANGE_MAX:
         error = WALL_DIST - wall_side
@@ -552,7 +553,7 @@ class MissionController(Node):
             self._publish_vel(0.0, angular)
 
     def _do_sign_driving(self, now: float) -> None:
-        if now - self._sign_drive_start > 4.0 or self._regions.front < 0.3:
+        if now - self._sign_drive_start > 6.0 or self._regions.front < 0.35:
             self._transition(State.EXPLORING)
             return
         self._publish_vel(MAX_LINEAR, 0.0)
