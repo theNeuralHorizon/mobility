@@ -39,7 +39,7 @@ class _SignColor:
 # HSV ranges for each sign color (matching arena sign textures)
 SIGN_COLORS: tuple[_SignColor, ...] = (
     _SignColor("LEFT", (
-        _HsvRange((35, 100, 100), (85, 255, 255)),
+        _HsvRange((40, 120, 120), (75, 255, 255)),
     )),
     _SignColor("RIGHT", (
         _HsvRange((100, 100, 100), (130, 255, 255)),
@@ -84,8 +84,8 @@ class SignDetector(Node):
         self._bridge = CvBridge()
 
         # ROS parameters for tuning
-        self.declare_parameter("min_detection_area", 500)
-        self.declare_parameter("cooldown_sec", 3.0)
+        self.declare_parameter("min_detection_area", 1500)
+        self.declare_parameter("cooldown_sec", 5.0)
 
         self._last_detection_time: dict[str, float] = {}
 
@@ -111,7 +111,7 @@ class SignDetector(Node):
         """Detect directional sign via HSV color segmentation."""
         min_area = self.get_parameter("min_detection_area").value
         cooldown = self.get_parameter("cooldown_sec").value
-        max_area = (frame.shape[0] * frame.shape[1]) // 2
+        max_area = (frame.shape[0] * frame.shape[1]) // 10
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 

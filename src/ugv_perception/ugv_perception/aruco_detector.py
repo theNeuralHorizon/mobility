@@ -77,6 +77,23 @@ class ArucoDetector(Node):
 
         detected_ids = ids.flatten().tolist()
 
+        # Filter out small markers (likely false positives)
+        valid_ids = []
+        for i, mid in enumerate(detected_ids):
+            corner_set = corners[i][0]
+            # Compute marker size as max dimension of bounding box
+            widths = corner_set[:, 0].max() - corner_set[:, 0].min()
+            heights = corner_set[:, 1].max() - corner_set[:, 1].min()
+            marker_size = max(widths, heights)
+            if marker_size < 20:
+                continue  # Too small — likely false positive
+            valid_ids.append(mid)
+
+        if not valid_ids:
+            return
+
+        detected_ids = valid_ids
+
         # Log newly visited markers
         for mid in detected_ids:
             if mid not in self._visited_ids:
