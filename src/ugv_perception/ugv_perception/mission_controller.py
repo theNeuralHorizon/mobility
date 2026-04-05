@@ -256,6 +256,13 @@ class MissionController(Node):
         self._sign_phase: str = "turning"
         self._sign_drive_start: float = 0.0
 
+        # -- sign logging & misleading detection --
+        self._sign_log: list[dict] = []
+        self._pre_sign_x: float = 0.0
+        self._pre_sign_y: float = 0.0
+        self._pre_sign_yaw: float = 0.0
+        self._active_sign_entry: dict | None = None
+
         # -- ROS 2 interfaces --
         self.create_subscription(
             LaserScan, "/r1_mini/lidar", self._lidar_cb, 10)
@@ -317,6 +324,32 @@ class MissionController(Node):
 
         if not self._validate_sign_direction(direction):
             return
+
+        # Check if this sign location was previously flagged as misleading
+        for entry in self._sign_log:
+            if (entry["direction"] == direction
+                    and entry["misleading"]
+                    and math.hypot(self._x - entry["x"],
+                                   self._y - entry["y"]) < 1.5):
+                self.get_logger().warn(
+                    f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
+                    f" previously flagged MISLEADING - skipping")
+                return
+
+        # Log sign encounter and store pre-sign position for backtracking
+        self._pre_sign_x = self._x
+        self._pre_sign_y = self._y
+        self._pre_sign_yaw = self._yaw
+        self._active_sign_entry = {
+            "direction": direction,
+            "x": self._x,
+            "y": self._y,
+            "misleading": False,
+        }
+        self._sign_log.append(self._active_sign_entry)
+        self.get_logger().info(
+            f"SIGN logged: {direction} at ({self._x:.1f},{self._y:.1f})"
+            f" [total signs: {len(self._sign_log)}]")
 
         self._current_sign = direction
         self._transition(State.SIGN_FOLLOW)
@@ -518,6 +551,8 @@ class MissionController(Node):
             self._do_sign_stopped(now)
         elif self._sign_phase == "spinning":
             self._do_sign_spinning(now)
+        elif self._sign_phase == "backtracking":
+            self._do_sign_backtrack(now)
 
     def _do_sign_turning(self, now: float) -> None:
         error = _normalize_angle(self._sign_target_yaw - self._yaw)
@@ -530,7 +565,26 @@ class MissionController(Node):
             self._publish_vel(0.0, angular)
 
     def _do_sign_driving(self, now: float) -> None:
-        if now - self._sign_drive_start > 2.0 or self._regions.front < 0.4:
+        if self._regions.front < 0.4:
+            # Hit a wall while following sign - classify as MISLEADING
+            if self._active_sign_entry is not None:
+                self._active_sign_entry["misleading"] = True
+                self.get_logger().warn(
+                    f"MISLEADING sign detected: "
+                    f"{self._active_sign_entry['direction']} at "
+                    f"({self._active_sign_entry['x']:.1f},"
+                    f"{self._active_sign_entry['y']:.1f}) - BACKTRACKING")
+                self._active_sign_entry = None
+                # Backtrack: reverse toward pre-sign position
+                self._sign_phase = "backtracking"
+                self._sign_drive_start = now
+            else:
+                self._transition(State.EXPLORING)
+            return
+        if now - self._sign_drive_start > 2.0:
+            # Completed sign driving normally - sign was trustworthy
+            self.get_logger().info("Sign follow completed successfully")
+            self._active_sign_entry = None
             self._transition(State.EXPLORING)
             return
         self._publish_vel(MAX_LINEAR, 0.0)
@@ -546,6 +600,29 @@ class MissionController(Node):
             self._transition(State.EXPLORING)
             return
         self._publish_vel(0.0, MAX_ANGULAR)
+
+    def _do_sign_backtrack(self, now: float) -> None:
+        """Backtrack toward pre-sign position after misleading sign."""
+        dx = self._pre_sign_x - self._x
+        dy = self._pre_sign_y - self._y
+        dist = math.hypot(dx, dy)
+
+        if dist < 0.3 or now - self._sign_drive_start > 5.0:
+            # Reached backtrack target or timeout
+            self.get_logger().info("Backtrack complete - resuming exploration")
+            self._transition(State.EXPLORING)
+            return
+
+        # Reverse toward pre-sign position
+        if now - self._sign_drive_start < 2.0:
+            # Phase 1: reverse
+            self._publish_vel(-0.15, 0.0)
+        else:
+            # Phase 2: turn toward pre-sign position
+            target_yaw = math.atan2(dy, dx)
+            error = _normalize_angle(target_yaw - self._yaw)
+            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(MAX_LINEAR * 0.5, angular)
 
     # ------------------------------------------------------------------
     #  GOAL_SEEK

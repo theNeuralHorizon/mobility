@@ -208,53 +208,7 @@ def aruco_model(
     )
 
 
-def dynamic_obstacle_model(
-    name: str,
-    waypoints: list[tuple[float, float]],
-    size: tuple[float, float, float] = (0.3, 0.3, 0.5),
-) -> str:
-    """Create a moving obstacle using model + trajectory-follower plugin.
 
-    Uses gz-sim-trajectory-follower-system which works with box primitives
-    (no mesh/skin needed). Models have collision, so robot will detect AND
-    physically interact with them.
-    """
-    wp_xml = ""
-    for x, y in waypoints:
-        wp_xml += f'        <waypoint>{x} {y}</waypoint>\n'
-    sx, sy, sz = size
-    x0, y0 = waypoints[0]
-    return (
-        f'    <model name="{name}">\n'
-        f'      <pose>{x0} {y0} {sz / 2} 0 0 0</pose>\n'
-        f'      <link name="link">\n'
-        f'        <inertial><mass>1.0</mass>\n'
-        f'          <inertia><ixx>0.01</ixx><iyy>0.01</iyy><izz>0.01</izz>'
-        f'<ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>\n'
-        f'        </inertial>\n'
-        f'        <visual name="v">\n'
-        f'          <geometry><box><size>{sx} {sy} {sz}</size></box></geometry>\n'
-        f'          <material><ambient>0.8 0.15 0.15 1</ambient>'
-        f'<diffuse>0.85 0.2 0.2 1</diffuse></material>\n'
-        f'        </visual>\n'
-        f'        <collision name="c">\n'
-        f'          <geometry><box><size>{sx} {sy} {sz}</size></box></geometry>\n'
-        f'        </collision>\n'
-        f'      </link>\n'
-        f'      <plugin filename="gz-sim-trajectory-follower-system"\n'
-        f'              name="gz::sim::systems::TrajectoryFollower">\n'
-        f'        <link_name>link</link_name>\n'
-        f'        <loop>true</loop>\n'
-        f'        <force>30</force>\n'
-        f'        <torque>20</torque>\n'
-        f'        <range_tolerance>0.5</range_tolerance>\n'
-        f'        <bearing_tolerance>10</bearing_tolerance>\n'
-        f'        <waypoints>\n'
-        + wp_xml +
-        f'        </waypoints>\n'
-        f'      </plugin>\n'
-        f'    </model>'
-    )
 
 
 # ---- Build SDF -----------------------------------------------------------
@@ -435,11 +389,6 @@ sdf = f'''<?xml version="1.0" ?>
         </visual>
       </link>
     </model>
-
-    <!-- Dynamic obstacles (models with trajectory-follower plugin) -->
-{dynamic_obstacle_model("patrol_1", [(5.0, 3.0), (5.0, 5.0)])}
-{dynamic_obstacle_model("patrol_2", [(7.0, 5.0), (7.0, 7.0)])}
-{dynamic_obstacle_model("patrol_3", [(3.0, 7.0), (5.0, 7.0)], size=(0.25, 0.25, 0.4))}
 
   </world>
 </sdf>'''
