@@ -44,26 +44,26 @@ from std_msgs.msg import Int32MultiArray, String
 #  Constants
 # ---------------------------------------------------------------------------
 
-MAX_LINEAR: Final[float] = 0.22
-MAX_ANGULAR: Final[float] = 0.6
+MAX_LINEAR: Final[float] = 0.35          # was 0.22 — faster exploration
+MAX_ANGULAR: Final[float] = 0.9          # was 0.6 — snappier turns
 WALL_DIST: Final[float] = 0.4
-KP: Final[float] = 1.0
+KP: Final[float] = 1.2
 KI: Final[float] = 0.05
-KD: Final[float] = 0.5
+KD: Final[float] = 0.6
 INTEGRAL_MAX: Final[float] = 1.0
 
 # Stuck detection
-STUCK_TIMEOUT: Final[float] = 7.0
-STUCK_MOVE_THRESHOLD: Final[float] = 0.1
+STUCK_TIMEOUT: Final[float] = 5.0        # was 7.0 — detect faster
+STUCK_MOVE_THRESHOLD: Final[float] = 0.08
 
 # Loop detection (position history based)
-LOOP_REVISIT_DIST: Final[float] = 0.5
-LOOP_TIME_THRESHOLD: Final[float] = 30.0
-LOOP_ACTIVATION_DELAY: Final[float] = 30.0
+LOOP_REVISIT_DIST: Final[float] = 0.6
+LOOP_TIME_THRESHOLD: Final[float] = 40.0
+LOOP_ACTIVATION_DELAY: Final[float] = 45.0   # was 30 — give time to explore first
 
 # Visited-cell grid
 CELL_SIZE: Final[float] = 0.5
-REVISIT_LIMIT: Final[int] = 2
+REVISIT_LIMIT: Final[int] = 3            # was 2 — less aggressive override
 
 # Markers
 REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
@@ -71,9 +71,9 @@ REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
 # LiDAR
 SAFE_RANGE_MAX: Final[float] = 10.0
 
-# Wall-follower thresholds (proven working for ~0.9m corridors)
-FRONT_STOP: Final[float] = 0.25
-FRONT_SLOW: Final[float] = 0.40
+# Wall-follower thresholds (tuned for 1.85m corridors at higher speed)
+FRONT_STOP: Final[float] = 0.30
+FRONT_SLOW: Final[float] = 0.50
 WALL_CLOSE: Final[float] = 0.30
 WALL_FAR: Final[float] = 0.80
 
@@ -562,7 +562,7 @@ class MissionController(Node):
                               else MAX_ANGULAR)
         elif r.front < FRONT_SLOW:
             # Getting close — slow down and steer
-            self._publish_vel(0.12, best_angular * 0.5)
+            self._publish_vel(MAX_LINEAR * 0.5, best_angular * 0.5)
         else:
             # Open ahead — drive at full speed with bias toward best gap
             self._publish_vel(MAX_LINEAR, best_angular * 0.3)
@@ -757,14 +757,18 @@ class MissionController(Node):
             self._consecutive_stucks = 1
         self._last_recovery_x = self._x
         self._last_recovery_y = self._y
-        # Pick a random turn direction for escape
-        import random
-        turn_dir = random.choice([-1, 1])
+        # Turn toward widest open direction (not random)
+        r = self._regions
+        if r.left > r.right:
+            turn_dir = 1   # turn left (more space on left)
+        else:
+            turn_dir = -1   # turn right
         self._recovery_target_yaw = _normalize_angle(
             self._yaw + turn_dir * math.pi / 2)
         self.get_logger().info(
             f"Recovery #{self._consecutive_stucks} at "
-            f"({self._x:.1f},{self._y:.1f})")
+            f"({self._x:.1f},{self._y:.1f}) "
+            f"[L={r.left:.1f} R={r.right:.1f} F={r.front:.1f}]")
 
     def _do_recovery(self) -> None:
         elapsed = time.monotonic() - self._recovery_start
@@ -784,81 +788,111 @@ class MissionController(Node):
                 self._do_recovery_reorient(elapsed)
 
     def _do_recovery_spin(self, elapsed: float) -> None:
-        """Strategy 1: Spin in place (~360 deg)."""
-        if elapsed > 6.5:
+        """Strategy 1: Rotate in place to rescan for paths (~270 deg)."""
+        if elapsed > 4.0:
             self._finish_recovery()
             return
-        self._publish_vel(0.0, 0.5)
+        # Rotate fast, looking for open space
+        r = self._regions
+        if elapsed > 1.5 and r.front > WALL_FAR:
+            # Found open space while spinning — stop and go
+            self._finish_recovery()
+            return
+        self._publish_vel(0.0, MAX_ANGULAR * 0.8)
 
     def _do_recovery_backtrack(self, elapsed: float) -> None:
-        """Strategy 2: Backtrack then turn."""
-        if elapsed < 2.0:
-            self._publish_vel(-0.15, 0.0)
-        elif elapsed < 4.0:
+        """Strategy 2: Backtrack — reverse along path then turn."""
+        if elapsed < 1.5:
+            # Hard reverse
+            self._publish_vel(-MAX_LINEAR * 0.8, 0.0)
+        elif elapsed < 3.5:
+            # Turn toward open space
             error = _normalize_angle(
                 self._recovery_target_yaw - self._yaw)
-            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
             self._publish_vel(0.0, angular)
+        elif elapsed < 5.5:
+            # Drive forward into new area
+            if self._regions.front > FRONT_STOP:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._publish_vel(0.0, MAX_ANGULAR)
         else:
             self._finish_recovery()
 
     def _do_recovery_escape(self, elapsed: float) -> None:
-        """Strategy 3: Reverse then turn 90 deg."""
-        if elapsed < 3.3:
-            self._publish_vel(-0.15, 0.0)
-        elif elapsed < 7.0:
-            error = _normalize_angle(
-                self._recovery_target_yaw - self._yaw)
+        """Strategy 3: Escape dead-end — 180-deg turn and exit."""
+        if elapsed < 1.5:
+            # Reverse out
+            self._publish_vel(-MAX_LINEAR * 0.8, 0.0)
+        elif elapsed < 4.5:
+            # 180-degree turn
+            target = _normalize_angle(self._recovery_target_yaw + math.pi)
+            error = _normalize_angle(target - self._yaw)
             if abs(error) < 0.2:
-                self._finish_recovery()
-                return
-            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-            self._publish_vel(0.0, angular)
+                # Done turning, drive out
+                if self._regions.front > FRONT_STOP:
+                    self._publish_vel(MAX_LINEAR, 0.0)
+                else:
+                    self._publish_vel(0.0, MAX_ANGULAR * 0.5)
+            else:
+                angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+                self._publish_vel(0.0, angular)
+        elif elapsed < 7.0:
+            # Drive forward to escape
+            if self._regions.front > FRONT_STOP:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._publish_vel(0.0, MAX_ANGULAR)
         else:
             self._finish_recovery()
 
     def _do_recovery_reorient(self, elapsed: float) -> None:
-        """Strategy 4: Turn toward longest open LiDAR direction."""
+        """Strategy 4: Reorient — turn toward widest open direction."""
         if elapsed > 5.0:
             self._finish_recovery()
             return
         r = self._regions
-        directions = {
-            'left': (r.left, MAX_ANGULAR),
-            'fleft': (r.fleft, MAX_ANGULAR * 0.6),
-            'front': (r.front, 0.0),
-            'fright': (r.fright, -MAX_ANGULAR * 0.6),
-            'right': (r.right, -MAX_ANGULAR),
-        }
-        best_dir = max(directions.items(), key=lambda d: d[1][0])
-        best_range, best_angular = best_dir[1]
-        if best_range > WALL_FAR:
+        directions = [
+            (r.left, MAX_ANGULAR),
+            (r.fleft, MAX_ANGULAR * 0.6),
+            (r.front, 0.0),
+            (r.fright, -MAX_ANGULAR * 0.6),
+            (r.right, -MAX_ANGULAR),
+        ]
+        best_range, best_angular = max(directions, key=lambda d: d[0])
+
+        if elapsed < 1.0:
+            # Brief reverse to unstick
+            self._publish_vel(-MAX_LINEAR * 0.5, 0.0)
+        elif best_range > WALL_FAR:
             if abs(best_angular) < 0.1:
                 self._publish_vel(MAX_LINEAR, 0.0)
             else:
-                self._publish_vel(0.05, best_angular)
+                self._publish_vel(0.1, best_angular)
         else:
-            self._publish_vel(0.0, MAX_ANGULAR * 0.5)
+            # Everything blocked — spin to find opening
+            self._publish_vel(0.0, MAX_ANGULAR * 0.8)
 
     def _do_recovery_panic(self, elapsed: float) -> None:
         """PANIC: Aggressive escape after 3+ consecutive stucks.
 
-        Phase 1 (0-2s): Hard reverse
-        Phase 2 (2-5s): Turn ~180 degrees
-        Phase 3 (5-8s): Drive forward into new area
+        Phase 1 (0-2s): Hard reverse at full speed
+        Phase 2 (2-4s): Turn 180 degrees
+        Phase 3 (4-7s): Drive forward full speed, dodging walls
         """
         if elapsed < 2.0:
             self._publish_vel(-MAX_LINEAR, 0.0)
-        elif elapsed < 5.0:
+        elif elapsed < 4.0:
             target = _normalize_angle(
                 self._recovery_target_yaw + math.pi)
             error = _normalize_angle(target - self._yaw)
             if abs(error) < 0.2:
                 self._publish_vel(0.0, 0.0)
             else:
-                angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+                angular = _clamp(error * 2.5, -MAX_ANGULAR, MAX_ANGULAR)
                 self._publish_vel(0.0, angular)
-        elif elapsed < 8.0:
+        elif elapsed < 7.0:
             if self._regions.front < FRONT_STOP:
                 self._publish_vel(0.0, MAX_ANGULAR)
             else:
