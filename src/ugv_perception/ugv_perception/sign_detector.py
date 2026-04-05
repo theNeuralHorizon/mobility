@@ -90,7 +90,7 @@ class SignDetector(Node):
         self._last_detection_time: dict[str, float] = {}
 
         self._image_sub = self.create_subscription(
-            Image, "/r1_mini/camera/image_raw", self._image_callback, 10,
+            Image, "/r1_mini/camera", self._image_callback, 10,
         )
         self._direction_pub = self.create_publisher(
             String, "/ugv/sign/direction", 10,
