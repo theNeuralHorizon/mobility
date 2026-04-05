@@ -267,6 +267,9 @@ class MissionController(Node):
         self._recovery_index: int = 0
         self._recovery_start: float = 0.0
         self._recovery_target_yaw: float = 0.0
+        self._consecutive_stucks: int = 0
+        self._last_recovery_x: float = 0.0
+        self._last_recovery_y: float = 0.0
 
         # -- sign follow --
         self._sign_target_yaw: float = 0.0
@@ -660,42 +663,68 @@ class MissionController(Node):
         self._publish_vel(MAX_LINEAR, 0.0)
 
     # ------------------------------------------------------------------
-    #  RECOVERY (3 strategies, cycled)
+    #  RECOVERY (escalating strategies)
     # ------------------------------------------------------------------
 
     def _setup_recovery(self) -> None:
         self._recovery_start = time.monotonic()
-        self._recovery_target_yaw = _normalize_angle(self._yaw + math.pi / 2)
+        # Check if we're stuck in the same area as last recovery
+        dist_from_last = math.hypot(
+            self._x - self._last_recovery_x,
+            self._y - self._last_recovery_y)
+        if dist_from_last < 1.0:
+            self._consecutive_stucks += 1
+        else:
+            self._consecutive_stucks = 1
+        self._last_recovery_x = self._x
+        self._last_recovery_y = self._y
+        # Pick a random turn direction for escape
+        import random
+        turn_dir = random.choice([-1, 1])
+        self._recovery_target_yaw = _normalize_angle(
+            self._yaw + turn_dir * math.pi / 2)
+        self.get_logger().info(
+            f"Recovery #{self._consecutive_stucks} at "
+            f"({self._x:.1f},{self._y:.1f})")
 
     def _do_recovery(self) -> None:
         elapsed = time.monotonic() - self._recovery_start
-        strategy = self._recovery_index % 4
 
-        if strategy == 0:
-            self._do_recovery_spin(elapsed)
-        elif strategy == 1:
-            self._do_recovery_backtrack(elapsed)
-        elif strategy == 3:
-            self._do_recovery_reorient(elapsed)
-        elif strategy == 2:
-            self._do_recovery_escape(elapsed)
+        if self._consecutive_stucks >= 3:
+            # PANIC mode: aggressive escape
+            self._do_recovery_panic(elapsed)
+        else:
+            strategy = self._recovery_index % 4
+            if strategy == 0:
+                self._do_recovery_spin(elapsed)
+            elif strategy == 1:
+                self._do_recovery_backtrack(elapsed)
+            elif strategy == 2:
+                self._do_recovery_escape(elapsed)
+            else:
+                self._do_recovery_reorient(elapsed)
 
     def _do_recovery_spin(self, elapsed: float) -> None:
-        """Strategy 1: Spin in place (~360 deg at 0.5 rad/s)."""
+        """Strategy 1: Spin in place (~360 deg)."""
         if elapsed > 6.5:
             self._finish_recovery()
             return
         self._publish_vel(0.0, 0.5)
 
     def _do_recovery_backtrack(self, elapsed: float) -> None:
-        """Strategy 2: Backtrack 0.3 m at -0.15 m/s."""
-        if elapsed > 2.0:
+        """Strategy 2: Backtrack then turn."""
+        if elapsed < 2.0:
+            self._publish_vel(-0.15, 0.0)
+        elif elapsed < 4.0:
+            error = _normalize_angle(
+                self._recovery_target_yaw - self._yaw)
+            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(0.0, angular)
+        else:
             self._finish_recovery()
-            return
-        self._publish_vel(-0.15, 0.0)
 
     def _do_recovery_escape(self, elapsed: float) -> None:
-        """Strategy 3: Reverse 0.5 m then turn 90 deg."""
+        """Strategy 3: Reverse then turn 90 deg."""
         if elapsed < 3.3:
             self._publish_vel(-0.15, 0.0)
         elif elapsed < 7.0:
@@ -710,12 +739,11 @@ class MissionController(Node):
             self._finish_recovery()
 
     def _do_recovery_reorient(self, elapsed: float) -> None:
-        """Strategy 4: Turn toward the longest open LiDAR direction."""
+        """Strategy 4: Turn toward longest open LiDAR direction."""
         if elapsed > 5.0:
             self._finish_recovery()
             return
         r = self._regions
-        # Find the direction with the most open space
         directions = {
             'left': (r.left, MAX_ANGULAR),
             'fleft': (r.fleft, MAX_ANGULAR * 0.6),
@@ -726,14 +754,37 @@ class MissionController(Node):
         best_dir = max(directions.items(), key=lambda d: d[1][0])
         best_range, best_angular = best_dir[1]
         if best_range > WALL_FAR:
-            # Open space found — turn toward it then drive
             if abs(best_angular) < 0.1:
                 self._publish_vel(MAX_LINEAR, 0.0)
             else:
                 self._publish_vel(0.05, best_angular)
         else:
-            # No clear opening — spin slowly
             self._publish_vel(0.0, MAX_ANGULAR * 0.5)
+
+    def _do_recovery_panic(self, elapsed: float) -> None:
+        """PANIC: Aggressive escape after 3+ consecutive stucks.
+
+        Phase 1 (0-2s): Hard reverse
+        Phase 2 (2-5s): Turn ~180 degrees
+        Phase 3 (5-8s): Drive forward into new area
+        """
+        if elapsed < 2.0:
+            self._publish_vel(-MAX_LINEAR, 0.0)
+        elif elapsed < 5.0:
+            target = _normalize_angle(self._yaw + math.pi)
+            error = _normalize_angle(target - self._yaw)
+            angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(0.0, angular)
+        elif elapsed < 8.0:
+            # Drive forward, dodge walls
+            if self._regions.front < FRONT_STOP:
+                self._publish_vel(0.0, MAX_ANGULAR)
+            else:
+                self._publish_vel(MAX_LINEAR, 0.0)
+        else:
+            self.get_logger().warn("PANIC escape complete")
+            self._consecutive_stucks = 0
+            self._finish_recovery()
 
     def _finish_recovery(self) -> None:
         self._recovery_index += 1
