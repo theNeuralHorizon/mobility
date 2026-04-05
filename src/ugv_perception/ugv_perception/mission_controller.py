@@ -44,12 +44,12 @@ from std_msgs.msg import Int32MultiArray, String
 #  Constants
 # ---------------------------------------------------------------------------
 
-MAX_LINEAR: Final[float] = 0.35          # was 0.22 — faster exploration
-MAX_ANGULAR: Final[float] = 0.9          # was 0.6 — snappier turns
+MAX_LINEAR: Final[float] = 0.5            # no hard cap in plugin — go fast
+MAX_ANGULAR: Final[float] = 1.2           # snappy turns for 1.85m corridors
 WALL_DIST: Final[float] = 0.4
-KP: Final[float] = 1.2
+KP: Final[float] = 1.4
 KI: Final[float] = 0.05
-KD: Final[float] = 0.6
+KD: Final[float] = 0.7
 INTEGRAL_MAX: Final[float] = 1.0
 
 # Stuck detection
@@ -71,10 +71,10 @@ REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
 # LiDAR
 SAFE_RANGE_MAX: Final[float] = 10.0
 
-# Wall-follower thresholds (tuned for 1.85m corridors at higher speed)
-FRONT_STOP: Final[float] = 0.35
-FRONT_SLOW: Final[float] = 0.55
-FRONT_REVERSE: Final[float] = 0.20       # too close — reverse while turning
+# Wall-follower thresholds (tuned for 0.5 m/s in 1.85m corridors)
+FRONT_STOP: Final[float] = 0.40
+FRONT_SLOW: Final[float] = 0.60
+FRONT_REVERSE: Final[float] = 0.22       # too close — reverse while turning
 WALL_CLOSE: Final[float] = 0.30
 WALL_FAR: Final[float] = 0.80
 
