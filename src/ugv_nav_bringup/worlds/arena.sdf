@@ -301,10 +301,10 @@
     <!-- ArUco markers ON wall surfaces, camera height z=0.15           -->
     <!-- ============================================================== -->
 
-    <!-- aruco_0: On south face of horizontal wall at y=2, near x=3    -->
-    <!-- Robot travels north in cell(1,0), sees this on the wall ahead -->
+    <!-- aruco_0: On south face of horizontal wall at y=4, x=1.0       -->
+    <!-- Robot must explore north to cell(0,1) area to see it         -->
     <model name="aruco_0"><static>true</static>
-      <pose>3.0 1.925 0.15 1.5708 0 0</pose>
+      <pose>1.0 3.925 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>
@@ -313,10 +313,10 @@
         </material></visual></link>
     </model>
 
-    <!-- aruco_1: On west face of vertical wall at x=4, near y=1      -->
-    <!-- Robot travels east along bottom row, sees this on wall ahead  -->
+    <!-- aruco_1: On west face of vertical wall at x=6, y=3.0         -->
+    <!-- Robot must reach cell(2,1) area to see it                     -->
     <model name="aruco_1"><static>true</static>
-      <pose>3.925 1.0 0.15 0 -1.5708 0</pose>
+      <pose>5.925 3.0 0.15 0 -1.5708 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>

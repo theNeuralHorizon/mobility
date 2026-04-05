@@ -231,12 +231,10 @@ def aruco_model(
 # = (c*2+1, r*2+1)
 #
 # ArUco markers ON wall surfaces:
-#   aruco_0: On south face of wall at y=2 (wall w5), x=3.0
-#            Wall w5 is at y=2.0, south face = y=2.0 - thick/2 = 1.925
-#            Robot approaches from south (cell 1,0), sees marker facing north
-#   aruco_1: On west face of wall at x=4 (wall w17), y=1.0
-#            Wall w17 is at x=4.0, west face = x=4.0 - thick/2 = 3.925
-#            Robot approaches from west (cell 1,0→2,0), sees marker facing east
+#   aruco_0: On south face of wall at y=4 (wall w7), x=1.0
+#            Robot must explore north to cell(0,1) to see it
+#   aruco_1: On west face of wall at x=6 (wall w20), y=3.0
+#            Robot must reach cell(2,1) area to see it
 #   aruco_2: On south face of wall at y=4 (wall w8), x=7.0
 #            Wall w8 is at y=4.0, south face = y=4.0 - thick/2 = 3.925
 #            Robot approaches from south (cell 3,1), sees marker facing north
@@ -341,13 +339,13 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- ArUco markers ON wall surfaces, camera height z=0.15           -->
     <!-- ============================================================== -->
 
-    <!-- aruco_0: On south face of horizontal wall at y=2, near x=3    -->
-    <!-- Robot travels north in cell(1,0), sees this on the wall ahead -->
-{aruco_model("aruco_0", 3.0, 1.925, 0.15, marker_id=0, facing="north")}
+    <!-- aruco_0: On south face of horizontal wall at y=4, x=1.0       -->
+    <!-- Robot must explore north to cell(0,1) area to see it         -->
+{aruco_model("aruco_0", 1.0, 3.925, 0.15, marker_id=0, facing="north")}
 
-    <!-- aruco_1: On west face of vertical wall at x=4, near y=1      -->
-    <!-- Robot travels east along bottom row, sees this on wall ahead  -->
-{aruco_model("aruco_1", 3.925, 1.0, 0.15, marker_id=1, facing="east")}
+    <!-- aruco_1: On west face of vertical wall at x=6, y=3.0         -->
+    <!-- Robot must reach cell(2,1) area to see it                     -->
+{aruco_model("aruco_1", 5.925, 3.0, 0.15, marker_id=1, facing="east")}
 
     <!-- aruco_2: On south face of horizontal wall at y=4, near x=7   -->
     <!-- Robot travels north in cell(3,1), sees this on wall ahead     -->

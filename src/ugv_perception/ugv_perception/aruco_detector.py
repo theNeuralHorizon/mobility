@@ -24,6 +24,11 @@ class ArucoDetector(Node):
     # ArUco dictionary to use (4x4, 50 markers)
     ARUCO_DICT = cv2.aruco.DICT_4X4_50
 
+    # Minimum marker size in pixels to count as detected.
+    # At 640x480 with 60deg FOV, a 0.3m marker at ~1.5m distance is ~60px.
+    # This prevents counting markers seen from far away at spawn.
+    MIN_MARKER_PX = 50
+
     def __init__(self):
         super().__init__("aruco_detector")
 
@@ -60,7 +65,8 @@ class ArucoDetector(Node):
             PoseArray, "/ugv/aruco/markers", 10
         )
 
-        self.get_logger().info("ArUco detector initialized (dict=4x4_50)")
+        self.get_logger().info(
+            f"ArUco detector initialized (dict=4x4_50, min_px={self.MIN_MARKER_PX})")
 
     def _image_callback(self, msg: Image) -> None:
         frame = self._bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
@@ -77,25 +83,24 @@ class ArucoDetector(Node):
 
         detected_ids = ids.flatten().tolist()
 
-        # Filter out small markers (likely false positives)
+        # Filter out small/distant markers
         valid_ids = []
+        valid_corners = []
         for i, mid in enumerate(detected_ids):
             corner_set = corners[i][0]
-            # Compute marker size as max dimension of bounding box
             widths = corner_set[:, 0].max() - corner_set[:, 0].min()
             heights = corner_set[:, 1].max() - corner_set[:, 1].min()
             marker_size = max(widths, heights)
-            if marker_size < 20:
-                continue  # Too small — likely false positive
+            if marker_size < self.MIN_MARKER_PX:
+                continue  # Too small/far — robot must get closer
             valid_ids.append(mid)
+            valid_corners.append(corners[i])
 
         if not valid_ids:
             return
 
-        detected_ids = valid_ids
-
         # Log newly visited markers
-        for mid in detected_ids:
+        for mid in valid_ids:
             if mid not in self._visited_ids:
                 self._visited_ids.add(mid)
                 self.get_logger().info(
@@ -105,7 +110,7 @@ class ArucoDetector(Node):
 
         # Publish detected IDs
         id_msg = Int32MultiArray()
-        id_msg.data = detected_ids
+        id_msg.data = valid_ids
         self._detections_pub.publish(id_msg)
 
         # Publish marker poses (center of each marker in image frame)
@@ -113,7 +118,7 @@ class ArucoDetector(Node):
         pose_array.header.stamp = self.get_clock().now().to_msg()
         pose_array.header.frame_id = "CAM"
 
-        for i, corner_set in enumerate(corners):
+        for corner_set in valid_corners:
             center = corner_set[0].mean(axis=0)
             pose = Pose()
             pose.position.x = float(center[0])
