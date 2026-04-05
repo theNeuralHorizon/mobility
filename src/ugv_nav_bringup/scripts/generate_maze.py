@@ -333,13 +333,29 @@ sdf = f'''<?xml version="1.0" ?>
 {aruco_model("aruco_3", 7.0, 5.0, marker_id=3, on_wall_y=False)}
 
     <!-- Directional signs on posts (with textures) -->
-{sign_model("sign_forward_1", 1.0, 2.5, 0, 0.8, 0.8, texture="sign_forward.png")}
-{sign_model("sign_right", 3.0, 1.0, 0, 0, 0.8, texture="sign_right.png")}
+    <!-- Path: (0,0)->(1,0)->(1,1)->(2,1)->(2,2)->(3,2)->(4,2)->(4,1)->(5,1)->(5,0) -->
+
+    <!-- TRUE: At (1,1) crossroads, guide north toward (1,2)/(2,1) corridor -->
+{sign_model("sign_forward_1", 3.0, 3.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+
+    <!-- MISLEADING: At (0,2) junction, LEFT would go west to dead-end (0,3) -->
+    <!-- Robot must U-turn from (0,3) and explore back east -->
 {sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0, texture="sign_left.png")}
-{sign_model("sign_forward_2", 7.0, 3.0, 0, 0.8, 0.8, texture="sign_forward.png")}
-{sign_model("sign_stop", 9.0, 3.0, 0.8, 0, 0, texture="sign_stop.png")}
+
+    <!-- TRUE: At (3,2) center, guide forward east toward (4,2) -->
+{sign_model("sign_forward_2", 7.0, 5.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+
+    <!-- TRUE: At (4,2) junction, guide right/south toward (4,1)->(5,1)->(5,0) -->
+{sign_model("sign_right", 9.0, 5.0, 0, 0, 0.8, texture="sign_right.png")}
+
+    <!-- TRUE: STOP sign near false goal at (3,4) to slow robot down -->
+{sign_model("sign_stop", 7.0, 7.0, 0.8, 0, 0, texture="sign_stop.png")}
+
+    <!-- TRUE: GOAL sign at cell (5,0) where actual goal zone is -->
 {sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0, texture="sign_goal.png")}
-{sign_model("sign_inplace_rotation", 5.0, 7.0, 0.6, 0, 0.6, texture="sign_inplace_rotation.png")}
+
+    <!-- INPLACE_ROTATION sign in upper corridor for bonus points -->
+{sign_model("sign_inplace_rotation", 5.0, 9.0, 0.6, 0, 0.6, texture="sign_inplace_rotation.png")}
 
     <!-- Static obstacles -->
     <model name="obs1"><static>true</static>

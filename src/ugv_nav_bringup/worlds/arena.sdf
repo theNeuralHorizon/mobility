@@ -352,8 +352,11 @@
     </model>
 
     <!-- Directional signs on posts (with textures) -->
+    <!-- Path: (0,0)->(1,0)->(1,1)->(2,1)->(2,2)->(3,2)->(4,2)->(4,1)->(5,1)->(5,0) -->
+
+    <!-- TRUE: At (1,1) crossroads, guide north toward (1,2)/(2,1) corridor -->
     <model name="sign_forward_1"><static>true</static>
-      <pose>1.0 2.5 0 0 0 0</pose>
+      <pose>3.0 3.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -371,25 +374,9 @@
         </visual>
       </link>
     </model>
-    <model name="sign_right"><static>true</static>
-      <pose>3.0 1.0 0 0 0 0</pose>
-      <link name="post">
-        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
-          <pose>0 0 0.125 0 0 0</pose>
-          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-          <pose>0 0 0.28 0 0 0</pose>
-          <material><diffuse>0 0 0.8 1</diffuse>
-            <pbr><metal>
-              <albedo_map>../textures/sign_right.png</albedo_map>
-            </metal></pbr>
-          </material>
-        </visual>
-      </link>
-    </model>
+
+    <!-- MISLEADING: At (0,2) junction, LEFT would go west to dead-end (0,3) -->
+    <!-- Robot must U-turn from (0,3) and explore back east -->
     <model name="sign_left_misleading"><static>true</static>
       <pose>1.0 5.0 0 0 0 0</pose>
       <link name="post">
@@ -409,8 +396,10 @@
         </visual>
       </link>
     </model>
+
+    <!-- TRUE: At (3,2) center, guide forward east toward (4,2) -->
     <model name="sign_forward_2"><static>true</static>
-      <pose>7.0 3.0 0 0 0 0</pose>
+      <pose>7.0 5.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -428,8 +417,31 @@
         </visual>
       </link>
     </model>
+
+    <!-- TRUE: At (4,2) junction, guide right/south toward (4,1)->(5,1)->(5,0) -->
+    <model name="sign_right"><static>true</static>
+      <pose>9.0 5.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_right.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- TRUE: STOP sign near false goal at (3,4) to slow robot down -->
     <model name="sign_stop"><static>true</static>
-      <pose>9.0 3.0 0 0 0 0</pose>
+      <pose>7.0 7.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -447,6 +459,8 @@
         </visual>
       </link>
     </model>
+
+    <!-- TRUE: GOAL sign at cell (5,0) where actual goal zone is -->
     <model name="sign_goal"><static>true</static>
       <pose>11.0 1.5 0 0 0 0</pose>
       <link name="post">
@@ -466,8 +480,10 @@
         </visual>
       </link>
     </model>
+
+    <!-- INPLACE_ROTATION sign in upper corridor for bonus points -->
     <model name="sign_inplace_rotation"><static>true</static>
-      <pose>5.0 7.0 0 0 0 0</pose>
+      <pose>5.0 9.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
