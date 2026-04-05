@@ -176,32 +176,42 @@ def _regions_from_scan(ranges: list[float]) -> LidarRegions:
 def _wall_follow_cmd(
     regions: LidarRegions,
     prev_error: float,
+    follow_left: bool = False,
 ) -> tuple[float, float, float]:
-    """Compute (linear, angular, new_prev_error) using PD wall-follower.
+    """Compute (linear, angular, new_prev_error) using wall-follower.
 
-    Returns the raw command from the right-wall-following algorithm.
+    When follow_left=False: follow the RIGHT wall (default).
+    When follow_left=True: follow the LEFT wall (mirror behavior).
+    This alternation helps the robot explore different maze areas.
     """
     r = regions
+    # Mirror left/right when following left wall
+    wall_side = r.left if follow_left else r.right
+    fwall_side = r.fleft if follow_left else r.fright
+    turn_sign = -1.0 if follow_left else 1.0  # +1 = turn left, -1 = turn right
 
     if r.front < FRONT_STOP:
-        return 0.0, MAX_ANGULAR, prev_error
+        return 0.0, turn_sign * MAX_ANGULAR, prev_error
 
     if r.front < FRONT_SLOW:
-        return 0.08, MAX_ANGULAR * 0.6, prev_error
+        return 0.08, turn_sign * MAX_ANGULAR * 0.6, prev_error
 
-    if r.fright < WALL_CLOSE:
-        return MAX_LINEAR * 0.7, 0.3, prev_error
+    if fwall_side < WALL_CLOSE:
+        return MAX_LINEAR * 0.7, turn_sign * 0.3, prev_error
 
-    if r.right > WALL_FAR and r.fright > WALL_FAR:
-        return MAX_LINEAR, -0.15, prev_error
+    if wall_side > WALL_FAR and fwall_side > WALL_FAR:
+        return MAX_LINEAR, -turn_sign * 0.15, prev_error
 
-    if r.right < SAFE_RANGE_MAX:
-        error = WALL_DIST - r.right
+    if wall_side < SAFE_RANGE_MAX:
+        error = WALL_DIST - wall_side
         d_error = error - prev_error
         angular = _clamp(KP * error + KD * d_error, -MAX_ANGULAR, MAX_ANGULAR)
+        # Flip angular direction for left-wall following
+        if follow_left:
+            angular = -angular
         return MAX_LINEAR, angular, error
 
-    return MAX_LINEAR, -0.2, prev_error
+    return MAX_LINEAR, -turn_sign * 0.2, prev_error
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +246,7 @@ class MissionController(Node):
 
         # -- PD wall-follow state --
         self._prev_wall_error: float = 0.0
+        self._follow_left: bool = False  # Alternates after each recovery
 
         # -- visited-cell tracking --
         self._visited_cells: set[tuple[int, int]] = set()
@@ -251,6 +262,9 @@ class MissionController(Node):
         self._recovery_start: float = 0.0
         self._recovery_target_yaw: float = 0.0
         self._last_recovery_end: float = 0.0  # Cooldown after recovery
+
+        # -- position logging --
+        self._last_pos_log: float = 0.0
 
         # -- sign follow --
         self._sign_target_yaw: float = 0.0
@@ -327,13 +341,23 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _update_move_tracking(self) -> None:
-        """Update stuck-detection move tracker."""
+        """Update stuck-detection move tracker and log position."""
+        now = time.monotonic()
         dx = self._x - self._last_move_x
         dy = self._y - self._last_move_y
         if math.hypot(dx, dy) > STUCK_MOVE_THRESHOLD:
-            self._last_move_time = time.monotonic()
+            self._last_move_time = now
             self._last_move_x = self._x
             self._last_move_y = self._y
+
+        # Log position every 30 seconds
+        if now - self._last_pos_log > 30.0:
+            direction = "LEFT" if self._follow_left else "RIGHT"
+            self.get_logger().info(
+                f"Position: ({self._x:.1f}, {self._y:.1f}) "
+                f"markers={len(self._visited_markers)}/4 "
+                f"wall={direction}")
+            self._last_pos_log = now
 
     def _update_position_history(self) -> None:
         """Record position every 2 s and prune records older than 120 s."""
@@ -447,14 +471,9 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _do_exploring(self) -> None:
-        cell = _pos_to_cell(self._x, self._y)
-        visits = self._cell_visit_count.get(cell, 0)
-
-        # Cell revisit tracking for diagnostics only (no override)
-        # The wall-follower + recovery handles exploration adequately
-
         linear, angular, new_error = _wall_follow_cmd(
-            self._regions, self._prev_wall_error)
+            self._regions, self._prev_wall_error,
+            follow_left=self._follow_left)
         self._prev_wall_error = new_error
         self._publish_vel(linear, angular)
 
@@ -615,6 +634,10 @@ class MissionController(Node):
         self._last_move_time = now
         self._last_recovery_end = now  # Cooldown timer
         self._prev_wall_error = 0.0
+        # Alternate wall-following direction to explore different areas
+        self._follow_left = not self._follow_left
+        direction = "LEFT" if self._follow_left else "RIGHT"
+        self.get_logger().info(f"Recovery done: now following {direction} wall")
         # Clear ALL history so loop detection does not re-trigger
         self._position_history.clear()
         self._last_record_time = now
