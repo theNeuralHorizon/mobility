@@ -270,6 +270,7 @@ class MissionController(Node):
         self._consecutive_stucks: int = 0
         self._last_recovery_x: float = 0.0
         self._last_recovery_y: float = 0.0
+        self._post_recovery_until: float = 0.0  # escape drive timer
 
         # -- sign follow --
         self._sign_target_yaw: float = 0.0
@@ -495,6 +496,13 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _do_exploring(self) -> None:
+        now = time.monotonic()
+
+        # Post-recovery escape: drive toward widest gap for 5s
+        if now < self._post_recovery_until:
+            self._do_gap_drive()
+            return
+
         cell = _pos_to_cell(self._x, self._y)
         visits = self._cell_visit_count.get(cell, 0)
 
@@ -507,6 +515,34 @@ class MissionController(Node):
             self._regions, self._prev_wall_error, self._wall_follow_side)
         self._prev_wall_error = new_error
         self._publish_vel(linear, angular)
+
+    def _do_gap_drive(self) -> None:
+        """Drive toward the widest open direction (gap-seeking).
+
+        Used after recovery to physically escape from stuck corners
+        before resuming wall-following.
+        """
+        r = self._regions
+        # Find the most open direction
+        directions = [
+            (r.left, MAX_ANGULAR),
+            (r.fleft, MAX_ANGULAR * 0.5),
+            (r.front, 0.0),
+            (r.fright, -MAX_ANGULAR * 0.5),
+            (r.right, -MAX_ANGULAR),
+        ]
+        best_range, best_angular = max(directions, key=lambda d: d[0])
+
+        if r.front < FRONT_STOP:
+            # Wall ahead — turn toward best direction
+            self._publish_vel(0.0, best_angular if best_angular != 0
+                              else MAX_ANGULAR)
+        elif r.front < FRONT_SLOW:
+            # Getting close — slow down and steer
+            self._publish_vel(0.1, best_angular * 0.5)
+        else:
+            # Open ahead — drive forward with slight bias toward best gap
+            self._publish_vel(MAX_LINEAR, best_angular * 0.3)
 
     def _do_exploring_override(self) -> None:
         """Override wall-follower when current cell revisited too often.
@@ -795,6 +831,10 @@ class MissionController(Node):
         self._wall_follow_side = "left" if old == "right" else "right"
         self.get_logger().info(
             f"Recovery done: wall-follow {old} -> {self._wall_follow_side}")
+        # POST-RECOVERY ESCAPE: drive toward gaps for 5 seconds
+        # This prevents wall-following from immediately returning to corner
+        self._post_recovery_until = time.monotonic() + 5.0
+        self.get_logger().info("Post-recovery gap drive: 5s")
         # Clear history so loop detection does not immediately re-trigger
         self._position_history.clear()
         self._last_record_time = time.monotonic()
