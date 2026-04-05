@@ -188,34 +188,31 @@ def aruco_model(
     name: str, x: float, y: float, z: float,
     marker_id: int, facing: str = "north",
 ) -> str:
-    """ArUco marker flush on a wall surface at given height.
+    """ArUco marker standing upright on a wall, visible from the horizontal plane.
 
-    facing: which direction the marker faces (toward the approaching robot)
-      - "north": on south face of a horizontal wall, faces +Y
-      - "south": on north face of a horizontal wall, faces -Y
-      - "east":  on west face of a vertical wall, faces +X
-      - "west":  on east face of a vertical wall, faces -X
+    The marker is a thin plane (0.3 x 0.01 x 0.3) — wide along X, tall along Z,
+    thin along Y. This makes it stand upright like a painting on a wall.
+    We only need to rotate around Z (yaw) to face the right corridor direction.
+
+    facing: which direction the textured face points toward
+      - "north": face points toward +Y (robot approaches from south)
+      - "south": face points toward -Y (robot approaches from north)
+      - "east":  face points toward +X (robot approaches from west)
+      - "west":  face points toward -X (robot approaches from east)
     """
-    if facing == "north":
-        # Marker on a wall, face points toward +Y (robot coming from south)
-        pose = f'{x} {y} {z} 1.5708 0 0'
-    elif facing == "south":
-        # Face points toward -Y (robot coming from north)
-        pose = f'{x} {y} {z} -1.5708 0 0'
-    elif facing == "east":
-        # Face points toward +X (robot coming from west)
-        pose = f'{x} {y} {z} 0 -1.5708 0'
-    elif facing == "west":
-        # Face points toward -X (robot coming from east)
-        pose = f'{x} {y} {z} 0 1.5708 0'
-    else:
-        pose = f'{x} {y} {z} 1.5708 0 0'
+    # Yaw rotation only — marker is already upright via geometry
+    yaw = {
+        "north": 0.0,
+        "south": 3.14159,
+        "east":  1.5708,
+        "west": -1.5708,
+    }.get(facing, 0.0)
 
     return (
         f'    <model name="{name}"><static>true</static>\n'
-        f'      <pose>{pose}</pose>\n'
+        f'      <pose>{x} {y} {z} 0 0 {yaw:.4f}</pose>\n'
         f'      <link name="l"><visual name="v"><geometry><box>'
-        f'<size>0.3 0.3 0.01</size></box></geometry>\n'
+        f'<size>0.3 0.01 0.3</size></box></geometry>\n'
         f'        <material><diffuse>1 1 1 1</diffuse>\n'
         f'          <pbr><metal>\n'
         f'            <albedo_map>../textures/aruco_{marker_id}.png</albedo_map>\n'
