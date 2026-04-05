@@ -305,9 +305,10 @@ sdf = f'''<?xml version="1.0" ?>
       <direction>0.5 -0.3 -0.8</direction>
     </light>
 
-    <!-- Ground -->
+    <!-- Ground (centered on arena) -->
     <model name="ground">
       <static>true</static>
+      <pose>{arena_w / 2} {arena_h / 2} 0 0 0 0</pose>
       <link name="link">
         <collision name="c"><geometry><plane><normal>0 0 1</normal>
           <size>20 20</size></plane></geometry></collision>
