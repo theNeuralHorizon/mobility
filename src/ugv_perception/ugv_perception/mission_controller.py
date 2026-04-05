@@ -1,34 +1,20 @@
-"""Mission controller node for UGV Autonomous Navigation Challenge.
+"""Mission controller for UGV Autonomous Navigation Challenge.
 
-Hybrid right-wall-following + visited-cell tracking state machine that
-navigates a map-less arena, detects ArUco markers, interprets directional
-signs, and reaches the goal.
+Simple, robust state machine:
+- EXPLORING: wall-follow + sign-follow + ArUco detection
+- SIGN_FOLLOW: execute sign command (LEFT/RIGHT/FORWARD/STOP/ROTATE/GOAL)
+- GOAL_SEEK: drive to goal when all 4 markers found + GOAL sign seen
+- RECOVERY: spin + reverse when stuck
+- MISSION_COMPLETE: stop
 
-Uses a PD controller to maintain a fixed distance from the right wall,
-with 5-region LiDAR decomposition for decision making.  An overlay grid
-tracks visited cells; when the robot revisits a cell 3+ times the
-wall-follower is overridden to break out of loops.
-
-States: EXPLORING, SIGN_FOLLOW, MARKER_APPROACH, GOAL_SEEK, RECOVERY,
-        MISSION_COMPLETE
-
-Topics:
-  Subscribes:
-    /r1_mini/lidar        (sensor_msgs/LaserScan)
-    /r1_mini/odom         (nav_msgs/Odometry)
-    /ugv/aruco/detections (std_msgs/Int32MultiArray)
-    /ugv/sign/direction   (std_msgs/String)
-  Publishes:
-    /cmd_vel              (geometry_msgs/Twist)
-    /ugv/mission/state    (std_msgs/String)
+The robot follows the RIGHT wall by default. After getting stuck,
+it switches to LEFT wall. This alternation covers the full maze.
 """
 
 from __future__ import annotations
 
 import math
 import time
-from collections import defaultdict
-from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Final
 
@@ -40,654 +26,358 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Int32MultiArray, String
 
 
-# ---------------------------------------------------------------------------
-#  Constants
-# ---------------------------------------------------------------------------
+# ── Constants ─────────────────────────────────────────────────────────────
 
-MAX_LINEAR: Final[float] = 0.35
-MAX_ANGULAR: Final[float] = 0.8
-WALL_DIST: Final[float] = 0.45
-KP: Final[float] = 0.8
-KD: Final[float] = 0.3
+MAX_LIN: Final = 0.30        # m/s forward
+MAX_ANG: Final = 0.7         # rad/s turning
+WALL_TARGET: Final = 0.5     # target distance from wall
+STUCK_SEC: Final = 20.0      # seconds before stuck
+MARKERS: Final = frozenset({0, 1, 2, 3})
 
-# Stuck detection — generous timeout so robot has time to navigate
-STUCK_TIMEOUT: Final[float] = 30.0
-STUCK_MOVE_THRESHOLD: Final[float] = 0.15
-
-# Loop detection (position history based)
-LOOP_REVISIT_DIST: Final[float] = 1.0
-LOOP_TIME_THRESHOLD: Final[float] = 120.0
-LOOP_ACTIVATION_DELAY: Final[float] = 180.0  # Only check after 3 minutes
-
-# Visited-cell grid
-CELL_SIZE: Final[float] = 0.5
-REVISIT_LIMIT: Final[int] = 3
-
-# Markers
-REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
-
-# LiDAR
-SAFE_RANGE_MAX: Final[float] = 10.0
-
-# Wall-follower thresholds (tuned for 1.85m corridors)
-FRONT_STOP: Final[float] = 0.35
-FRONT_SLOW: Final[float] = 0.55
-WALL_CLOSE: Final[float] = 0.35
-WALL_FAR: Final[float] = 1.2
-
-
-# ---------------------------------------------------------------------------
-#  Enums / Frozen Data
-# ---------------------------------------------------------------------------
 
 class State(Enum):
-    """Mission state machine states."""
-
     EXPLORING = auto()
     SIGN_FOLLOW = auto()
-    MARKER_APPROACH = auto()
     GOAL_SEEK = auto()
     RECOVERY = auto()
-    MISSION_COMPLETE = auto()
+    DONE = auto()
 
 
-@dataclass(frozen=True)
-class PositionRecord:
-    """Immutable snapshot of robot position at a point in time."""
-
-    x: float
-    y: float
-    timestamp: float
+def _clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
 
 
-@dataclass(frozen=True)
-class LidarRegions:
-    """Five-region decomposition of LiDAR data."""
-
-    right: float = SAFE_RANGE_MAX
-    fright: float = SAFE_RANGE_MAX
-    front: float = SAFE_RANGE_MAX
-    fleft: float = SAFE_RANGE_MAX
-    left: float = SAFE_RANGE_MAX
+def _yaw(q) -> float:
+    return math.atan2(2 * (q.w * q.z + q.x * q.y),
+                      1 - 2 * (q.y**2 + q.z**2))
 
 
-# ---------------------------------------------------------------------------
-#  Pure helpers
-# ---------------------------------------------------------------------------
+def _norm(a: float) -> float:
+    while a > math.pi: a -= 2 * math.pi
+    while a < -math.pi: a += 2 * math.pi
+    return a
 
-def _clamp(value: float, low: float, high: float) -> float:
-    """Clamp *value* between *low* and *high* inclusive."""
-    return max(low, min(high, value))
-
-
-def _yaw_from_quaternion(q) -> float:
-    """Extract yaw from a ROS quaternion message."""
-    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
-    return math.atan2(siny_cosp, cosy_cosp)
-
-
-def _normalize_angle(angle: float) -> float:
-    """Normalize angle to [-pi, pi]."""
-    while angle > math.pi:
-        angle -= 2.0 * math.pi
-    while angle < -math.pi:
-        angle += 2.0 * math.pi
-    return angle
-
-
-def _safe_min(values: list[float], default: float = SAFE_RANGE_MAX) -> float:
-    """Return min of *finite* positive values, or *default*."""
-    finite = [v for v in values if math.isfinite(v) and v > 0.01]
-    return min(min(finite), default) if finite else default
-
-
-def _pos_to_cell(x: float, y: float) -> tuple[int, int]:
-    """Convert world position to a grid cell index."""
-    return (int(math.floor(x / CELL_SIZE)), int(math.floor(y / CELL_SIZE)))
-
-
-def _regions_from_scan(ranges: list[float]) -> LidarRegions:
-    """Build five LiDAR regions from a 360-ray scan.
-
-    Index 0 = behind (-pi), 90 = right (-pi/2), 180 = front (0),
-    270 = left (+pi/2), 359 ~ behind (+pi).
-    """
-    n = len(ranges)
-    if n == 0:
-        return LidarRegions()
-
-    def _sector(lo: int, hi: int) -> float:
-        lo_c = max(0, min(n - 1, lo))
-        hi_c = max(0, min(n - 1, hi))
-        if lo_c > hi_c:
-            lo_c, hi_c = hi_c, lo_c
-        return _safe_min(list(ranges[lo_c:hi_c + 1]))
-
-    return LidarRegions(
-        right=_sector(70, 110),
-        fright=_sector(110, 150),
-        front=_sector(150, 210),
-        fleft=_sector(210, 250),
-        left=_sector(250, 290),
-    )
-
-
-def _wall_follow_cmd(
-    regions: LidarRegions,
-    prev_error: float,
-    follow_left: bool = False,
-) -> tuple[float, float, float]:
-    """Compute (linear, angular, new_prev_error) using wall-follower.
-
-    When follow_left=False: follow the RIGHT wall (default).
-    When follow_left=True: follow the LEFT wall (mirror behavior).
-    This alternation helps the robot explore different maze areas.
-    """
-    r = regions
-    # Mirror left/right when following left wall
-    wall_side = r.left if follow_left else r.right
-    fwall_side = r.fleft if follow_left else r.fright
-    turn_sign = -1.0 if follow_left else 1.0  # +1 = turn left, -1 = turn right
-
-    if r.front < FRONT_STOP:
-        return 0.0, turn_sign * MAX_ANGULAR, prev_error
-
-    if r.front < FRONT_SLOW:
-        return 0.08, turn_sign * MAX_ANGULAR * 0.6, prev_error
-
-    if fwall_side < WALL_CLOSE:
-        return MAX_LINEAR * 0.7, turn_sign * 0.3, prev_error
-
-    if wall_side > WALL_FAR and fwall_side > WALL_FAR:
-        # Opening found — turn into it more aggressively
-        return MAX_LINEAR, -turn_sign * 0.35, prev_error
-
-    if wall_side < SAFE_RANGE_MAX:
-        error = WALL_DIST - wall_side
-        d_error = error - prev_error
-        angular = _clamp(KP * error + KD * d_error, -MAX_ANGULAR, MAX_ANGULAR)
-        # Flip angular direction for left-wall following
-        if follow_left:
-            angular = -angular
-        return MAX_LINEAR, angular, error
-
-    return MAX_LINEAR, -turn_sign * 0.2, prev_error
-
-
-# ---------------------------------------------------------------------------
-#  Node
-# ---------------------------------------------------------------------------
 
 class MissionController(Node):
-    """Hybrid wall-following + visited-cell mission controller."""
-
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__("mission_controller")
 
-        # -- state machine --
-        self._state: State = State.EXPLORING
-        self._prev_state: State = State.EXPLORING
+        self._state = State.EXPLORING
+        self._markers: set[int] = set()
+        self._sign: str | None = None
 
-        # -- perception data --
-        self._regions: LidarRegions = LidarRegions()
-        self._visited_markers: set[int] = set()
-        self._current_sign: str | None = None
+        # Odom
+        self._x = self._y = self._yaw_val = 0.0
 
-        # -- odometry --
-        self._x: float = 0.0
-        self._y: float = 0.0
-        self._yaw: float = 0.0
+        # LiDAR regions (right, fright, front, fleft, left)
+        self._R = self._FR = self._F = self._FL = self._L = 10.0
 
-        # -- stuck detection --
-        self._start_time: float = time.monotonic()
-        self._last_move_time: float = time.monotonic()
-        self._last_move_x: float = 0.0
-        self._last_move_y: float = 0.0
+        # Stuck
+        self._last_move_t = self._start_t = time.monotonic()
+        self._last_mx = self._last_my = 0.0
 
-        # -- PD wall-follow state --
-        self._prev_wall_error: float = 0.0
-        self._follow_left: bool = False  # Alternates after each recovery
+        # Wall-follow direction
+        self._follow_left = False
+        self._recovery_count = 0
 
-        # -- visited-cell tracking --
-        self._visited_cells: set[tuple[int, int]] = set()
-        self._cell_visit_count: dict[tuple[int, int], int] = defaultdict(int)
-        self._last_cell: tuple[int, int] = (0, 0)
+        # Sign follow
+        self._sign_yaw = 0.0
+        self._sign_phase = ""
+        self._sign_t = 0.0
 
-        # -- loop detection (position history) --
-        self._position_history: list[PositionRecord] = []
-        self._last_record_time: float = 0.0
+        # Recovery
+        self._rec_t = 0.0
+        self._rec_yaw = 0.0
 
-        # -- recovery --
-        self._recovery_index: int = 0
-        self._recovery_start: float = 0.0
-        self._recovery_target_yaw: float = 0.0
-        self._last_recovery_end: float = 0.0  # Cooldown after recovery
+        # Logging
+        self._log_t = 0.0
 
-        # -- position logging --
-        self._last_pos_log: float = 0.0
+        # ROS
+        self.create_subscription(LaserScan, "/r1_mini/lidar", self._on_lidar, 10)
+        self.create_subscription(Odometry, "/r1_mini/odom", self._on_odom, 10)
+        self.create_subscription(Int32MultiArray, "/ugv/aruco/detections", self._on_aruco, 10)
+        self.create_subscription(String, "/ugv/sign/direction", self._on_sign, 10)
+        self._cmd = self.create_publisher(Twist, "/cmd_vel", 10)
+        self._state_pub = self.create_publisher(String, "/ugv/mission/state", 10)
+        self.create_timer(0.1, self._tick)
+        self.get_logger().info("Mission controller started — EXPLORING")
 
-        # -- sign follow --
-        self._sign_target_yaw: float = 0.0
-        self._sign_phase: str = "turning"
-        self._sign_drive_start: float = 0.0
+    # ── Callbacks ─────────────────────────────────────────────────────────
 
-        # -- ROS 2 interfaces --
-        self.create_subscription(
-            LaserScan, "/r1_mini/lidar", self._lidar_cb, 10)
-        self.create_subscription(
-            Odometry, "/r1_mini/odom", self._odom_cb, 10)
-        self.create_subscription(
-            Int32MultiArray, "/ugv/aruco/detections", self._aruco_cb, 10)
-        self.create_subscription(
-            String, "/ugv/sign/direction", self._sign_cb, 10)
+    def _on_lidar(self, msg: LaserScan):
+        r = list(msg.ranges)
+        n = len(r)
+        if n == 0:
+            return
 
-        self._cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
-        self._state_pub = self.create_publisher(
-            String, "/ugv/mission/state", 10)
+        def sector(lo, hi):
+            lo, hi = max(0, lo), min(n - 1, hi)
+            vals = [v for v in r[lo:hi+1] if 0.01 < v < 30 and math.isfinite(v)]
+            return min(vals) if vals else 10.0
 
-        self.create_timer(0.1, self._control_loop)
+        self._R = sector(70, 110)
+        self._FR = sector(110, 150)
+        self._F = sector(150, 210)
+        self._FL = sector(210, 250)
+        self._L = sector(250, 290)
 
-        self.get_logger().info("Mission controller started - state: EXPLORING")
-
-    # ------------------------------------------------------------------
-    #  Callbacks
-    # ------------------------------------------------------------------
-
-    def _lidar_cb(self, msg: LaserScan) -> None:
-        self._regions = _regions_from_scan(list(msg.ranges))
-
-    def _odom_cb(self, msg: Odometry) -> None:
+    def _on_odom(self, msg: Odometry):
         self._x = msg.pose.pose.position.x
         self._y = msg.pose.pose.position.y
-        self._yaw = _yaw_from_quaternion(msg.pose.pose.orientation)
+        self._yaw_val = _yaw(msg.pose.pose.orientation)
 
-        self._update_move_tracking()
-        self._update_position_history()
-        self._update_cell_tracking()
+        d = math.hypot(self._x - self._last_mx, self._y - self._last_my)
+        if d > 0.15:
+            self._last_move_t = time.monotonic()
+            self._last_mx, self._last_my = self._x, self._y
 
-    def _aruco_cb(self, msg: Int32MultiArray) -> None:
+    def _on_aruco(self, msg: Int32MultiArray):
         for mid in msg.data:
-            if mid in REQUIRED_MARKERS and mid not in self._visited_markers:
-                self._visited_markers.add(mid)
-                self.get_logger().info(
-                    f"ArUco {mid} visited! "
-                    f"({len(self._visited_markers)}/{len(REQUIRED_MARKERS)})")
-                if self._visited_markers >= REQUIRED_MARKERS:
-                    self.get_logger().info("ALL 4 MARKERS COLLECTED!")
+            if mid in MARKERS and mid not in self._markers:
+                self._markers.add(mid)
+                self.get_logger().info(f">>> ArUco {mid} found! ({len(self._markers)}/4)")
+                if self._markers >= MARKERS:
+                    self.get_logger().info(">>> ALL 4 MARKERS COLLECTED!")
 
-    def _sign_cb(self, msg: String) -> None:
-        if self._state in (State.RECOVERY, State.MISSION_COMPLETE,
-                           State.SIGN_FOLLOW):
+    def _on_sign(self, msg: String):
+        if self._state not in (State.EXPLORING,):
+            return
+        d = msg.data
+        self.get_logger().info(f">>> Sign detected: {d}")
+
+        if d == "GOAL":
+            if self._markers >= MARKERS:
+                self.get_logger().info(">>> GOAL sign + all markers → GOAL_SEEK")
+                self._set_state(State.GOAL_SEEK)
             return
 
-        direction = msg.data
+        # Validate: don't turn into a wall
+        if d == "LEFT" and self._L < 0.5:
+            self.get_logger().warn("LEFT sign rejected (wall)")
+            return
+        if d == "RIGHT" and self._R < 0.5:
+            self.get_logger().warn("RIGHT sign rejected (wall)")
+            return
 
-        if direction == "GOAL":
-            if self._visited_markers >= REQUIRED_MARKERS:
-                self._transition(State.GOAL_SEEK)
+        self._sign = d
+        self._set_state(State.SIGN_FOLLOW)
+
+    # ── State machine ─────────────────────────────────────────────────────
+
+    def _set_state(self, s: State):
+        if s == self._state:
+            return
+        old = self._state
+        self._state = s
+        self.get_logger().info(f"State: {old.name} → {s.name}")
+
+        if s == State.SIGN_FOLLOW:
+            self._init_sign()
+        elif s == State.RECOVERY:
+            self._rec_t = time.monotonic()
+            self._rec_yaw = _norm(self._yaw_val + math.pi)
+
+        m = String()
+        m.data = s.name
+        self._state_pub.publish(m)
+
+    def _tick(self):
+        now = time.monotonic()
+
+        # Log position every 20s
+        if now - self._log_t > 20:
+            side = "L" if self._follow_left else "R"
+            self.get_logger().info(
+                f"pos=({self._x:.1f},{self._y:.1f}) markers={len(self._markers)}/4 "
+                f"wall={side} F={self._F:.2f} R={self._R:.2f} L={self._L:.2f}")
+            self._log_t = now
+
+        if self._state == State.DONE:
+            self._vel(0, 0)
+            return
+
+        # Stuck check (not during recovery)
+        if self._state != State.RECOVERY:
+            if now - self._last_move_t > STUCK_SEC:
+                self.get_logger().warn(f"Stuck {STUCK_SEC}s → RECOVERY")
+                self._set_state(State.RECOVERY)
+                return
+
+        if self._state == State.EXPLORING:
+            self._do_explore()
+        elif self._state == State.SIGN_FOLLOW:
+            self._do_sign()
+        elif self._state == State.GOAL_SEEK:
+            self._do_goal()
+        elif self._state == State.RECOVERY:
+            self._do_recover(now)
+
+    # ── EXPLORING ─────────────────────────────────────────────────────────
+
+    def _do_explore(self):
+        """Wall-following with left/right alternation."""
+        if self._follow_left:
+            self._wall_follow_left()
+        else:
+            self._wall_follow_right()
+
+    def _wall_follow_right(self):
+        """Follow the right wall."""
+        F, FR, R = self._F, self._FR, self._R
+
+        if F < 0.4:
+            # Wall ahead — turn left
+            self._vel(0.05, MAX_ANG * 0.8)
+        elif FR < 0.3:
+            # Too close to front-right — veer left
+            self._vel(MAX_LIN * 0.6, 0.3)
+        elif R > 1.0 and FR > 1.0:
+            # Right side open — turn right to find wall
+            self._vel(MAX_LIN * 0.9, -0.4)
+        elif R < 10:
+            # PD wall follow
+            err = WALL_TARGET - R
+            ang = _clamp(0.8 * err, -MAX_ANG, MAX_ANG)
+            self._vel(MAX_LIN, ang)
+        else:
+            # No wall — go forward, drift right
+            self._vel(MAX_LIN, -0.2)
+
+    def _wall_follow_left(self):
+        """Follow the left wall (mirror of right)."""
+        F, FL, L = self._F, self._FL, self._L
+
+        if F < 0.4:
+            self._vel(0.05, -MAX_ANG * 0.8)
+        elif FL < 0.3:
+            self._vel(MAX_LIN * 0.6, -0.3)
+        elif L > 1.0 and FL > 1.0:
+            self._vel(MAX_LIN * 0.9, 0.4)
+        elif L < 10:
+            err = WALL_TARGET - L
+            ang = _clamp(0.8 * err, -MAX_ANG, MAX_ANG)
+            self._vel(MAX_LIN, -ang)
+        else:
+            self._vel(MAX_LIN, 0.2)
+
+    # ── SIGN_FOLLOW ───────────────────────────────────────────────────────
+
+    def _init_sign(self):
+        s = self._sign
+        if s == "LEFT":
+            self._sign_yaw = _norm(self._yaw_val + math.pi / 2)
+            self._sign_phase = "turn"
+        elif s == "RIGHT":
+            self._sign_yaw = _norm(self._yaw_val - math.pi / 2)
+            self._sign_phase = "turn"
+        elif s == "FORWARD":
+            self._sign_phase = "drive"
+            self._sign_t = time.monotonic()
+        elif s == "STOP":
+            self._sign_phase = "stop"
+            self._sign_t = time.monotonic()
+        elif s == "INPLACE_ROTATION":
+            self._sign_phase = "spin"
+            self._sign_t = time.monotonic()
+        else:
+            self._set_state(State.EXPLORING)
+
+    def _do_sign(self):
+        now = time.monotonic()
+
+        if self._sign_phase == "turn":
+            err = _norm(self._sign_yaw - self._yaw_val)
+            if abs(err) < 0.12:
+                self._sign_phase = "drive"
+                self._sign_t = now
             else:
-                self.get_logger().info(
-                    "GOAL sign seen but markers incomplete - ignoring")
-            return
+                self._vel(0, _clamp(err * 2.0, -MAX_ANG, MAX_ANG))
 
-        if not self._validate_sign_direction(direction):
-            return
+        elif self._sign_phase == "drive":
+            if now - self._sign_t > 5.0 or self._F < 0.4:
+                self._set_state(State.EXPLORING)
+            else:
+                self._vel(MAX_LIN, 0)
 
-        self._current_sign = direction
-        self._transition(State.SIGN_FOLLOW)
+        elif self._sign_phase == "stop":
+            if now - self._sign_t > 2.0:
+                self._set_state(State.EXPLORING)
+            else:
+                self._vel(0, 0)
 
-    # ------------------------------------------------------------------
-    #  Odom helper updates (called from _odom_cb)
-    # ------------------------------------------------------------------
+        elif self._sign_phase == "spin":
+            if now - self._sign_t > 6.0:
+                self._set_state(State.EXPLORING)
+            else:
+                self._vel(0, MAX_ANG)
 
-    def _update_move_tracking(self) -> None:
-        """Update stuck-detection move tracker and log position."""
-        now = time.monotonic()
-        dx = self._x - self._last_move_x
-        dy = self._y - self._last_move_y
-        if math.hypot(dx, dy) > STUCK_MOVE_THRESHOLD:
-            self._last_move_time = now
-            self._last_move_x = self._x
-            self._last_move_y = self._y
+    # ── GOAL_SEEK ─────────────────────────────────────────────────────────
 
-        # Log position every 30 seconds
-        if now - self._last_pos_log > 30.0:
-            direction = "LEFT" if self._follow_left else "RIGHT"
-            self.get_logger().info(
-                f"Position: ({self._x:.1f}, {self._y:.1f}) "
-                f"markers={len(self._visited_markers)}/4 "
-                f"wall={direction}")
-            self._last_pos_log = now
-
-    def _update_position_history(self) -> None:
-        """Record position every 2 s and prune records older than 120 s."""
-        now = time.monotonic()
-        if now - self._last_record_time > 2.0:
-            self._position_history.append(
-                PositionRecord(self._x, self._y, now))
-            self._last_record_time = now
-            cutoff = now - 120.0
-            self._position_history = [
-                p for p in self._position_history if p.timestamp > cutoff
-            ]
-
-    def _update_cell_tracking(self) -> None:
-        """Track which grid cells the robot visits and how often."""
-        cell = _pos_to_cell(self._x, self._y)
-        if cell != self._last_cell:
-            self._visited_cells.add(cell)
-            self._cell_visit_count[cell] += 1
-            self._last_cell = cell
-
-    # ------------------------------------------------------------------
-    #  Sign validation
-    # ------------------------------------------------------------------
-
-    def _validate_sign_direction(self, direction: str) -> bool:
-        """Reject misleading signs using LiDAR cross-check."""
-        if direction == "LEFT" and self._regions.left < 0.4:
-            self.get_logger().warn("LEFT sign rejected - wall on left")
-            return False
-        if direction == "RIGHT" and self._regions.right < 0.4:
-            self.get_logger().warn("RIGHT sign rejected - wall on right")
-            return False
-        return True
-
-    # ------------------------------------------------------------------
-    #  State transition
-    # ------------------------------------------------------------------
-
-    def _transition(self, new_state: State) -> None:
-        if new_state == self._state:
-            return
-        self._prev_state = self._state
-        self._state = new_state
-        self.get_logger().info(
-            f"State: {self._prev_state.name} -> {new_state.name}")
-
-        if new_state == State.SIGN_FOLLOW:
-            self._setup_sign_follow()
-        elif new_state == State.RECOVERY:
-            self._setup_recovery()
-
-        state_msg = String()
-        state_msg.data = new_state.name
-        self._state_pub.publish(state_msg)
-
-    # ------------------------------------------------------------------
-    #  Main control loop
-    # ------------------------------------------------------------------
-
-    def _control_loop(self) -> None:
-        if self._state == State.MISSION_COMPLETE:
-            self._publish_vel(0.0, 0.0)
-            return
-
-        if self._check_stuck():
-            return
-
-        if self._check_loop():
-            return
-
-        handlers: dict = {
-            State.EXPLORING: self._do_exploring,
-            State.SIGN_FOLLOW: self._do_sign_follow,
-            State.GOAL_SEEK: self._do_goal_seek,
-            State.RECOVERY: self._do_recovery,
-        }
-        handler = handlers.get(self._state)
-        if handler is not None:
-            handler()
-
-    def _check_stuck(self) -> bool:
-        """Return True (and enter RECOVERY) if robot is stuck."""
-        if self._state == State.RECOVERY:
-            return False
-        stuck_secs = time.monotonic() - self._last_move_time
-        if stuck_secs > STUCK_TIMEOUT:
-            self.get_logger().warn(
-                f"Stuck for {stuck_secs:.1f}s - entering RECOVERY")
-            self._transition(State.RECOVERY)
-            return True
-        return False
-
-    def _check_loop(self) -> bool:
-        """Return True (and enter RECOVERY) if a loop is detected."""
-        if self._state != State.EXPLORING:
-            return False
-        now = time.monotonic()
-        # Don't check loops for 30s after last recovery
-        if now - self._last_recovery_end < 30.0:
-            return False
-        elapsed = now - self._start_time
-        if elapsed > LOOP_ACTIVATION_DELAY and self._detect_loop():
-            self.get_logger().warn("Loop detected - entering RECOVERY")
-            self._transition(State.RECOVERY)
-            return True
-        return False
-
-    # ------------------------------------------------------------------
-    #  EXPLORING: Right-wall following + visited-cell override
-    # ------------------------------------------------------------------
-
-    def _do_exploring(self) -> None:
-        linear, angular, new_error = _wall_follow_cmd(
-            self._regions, self._prev_wall_error,
-            follow_left=self._follow_left)
-        self._prev_wall_error = new_error
-        self._publish_vel(linear, angular)
-
-    def _do_exploring_override(self) -> None:
-        """Override wall-follower when current cell revisited too often.
-
-        Strategy: if the normal wall-follower would turn right (or go
-        straight), force a left turn instead.  If already turning left,
-        go straight.  This breaks the repetitive loop pattern.
-        """
-        r = self._regions
-
-        if r.front < FRONT_STOP:
-            # Still need to avoid frontal collision - turn left hard
-            self._publish_vel(0.0, MAX_ANGULAR)
-            return
-
-        # Prefer going toward the least-visited adjacent direction
-        if r.left > WALL_CLOSE and r.fleft > WALL_CLOSE:
-            # Left is open - override: turn left
-            self.get_logger().info(
-                "Cell revisit override: turning LEFT to break loop")
-            self._publish_vel(MAX_LINEAR * 0.8, 0.3)
-        elif r.front > FRONT_SLOW:
-            # Straight is open - just go forward
-            self.get_logger().info(
-                "Cell revisit override: going STRAIGHT to break loop")
-            self._publish_vel(MAX_LINEAR, 0.0)
+    def _do_goal(self):
+        if self._F < 0.3:
+            self.get_logger().info("★ MISSION COMPLETE ★")
+            self._set_state(State.DONE)
         else:
-            # Fallback: slow left turn
-            self._publish_vel(0.05, MAX_ANGULAR * 0.7)
+            self._vel(MAX_LIN, 0)
 
-    # ------------------------------------------------------------------
-    #  SIGN_FOLLOW
-    # ------------------------------------------------------------------
+    # ── RECOVERY ──────────────────────────────────────────────────────────
 
-    def _setup_sign_follow(self) -> None:
-        sign = self._current_sign
-        if sign == "LEFT":
-            self._sign_target_yaw = _normalize_angle(self._yaw + math.pi / 2)
-            self._sign_phase = "turning"
-        elif sign == "RIGHT":
-            self._sign_target_yaw = _normalize_angle(self._yaw - math.pi / 2)
-            self._sign_phase = "turning"
-        elif sign == "FORWARD":
-            self._sign_phase = "driving"
-            self._sign_drive_start = time.monotonic()
-        elif sign == "STOP":
-            self._sign_phase = "stopped"
-            self._sign_drive_start = time.monotonic()
-        elif sign == "INPLACE_ROTATION":
-            self._sign_target_yaw = _normalize_angle(self._yaw + 2 * math.pi)
-            self._sign_phase = "spinning"
-            self._sign_drive_start = time.monotonic()
-
-    def _do_sign_follow(self) -> None:
-        now = time.monotonic()
-
-        if self._sign_phase == "turning":
-            self._do_sign_turning(now)
-        elif self._sign_phase == "driving":
-            self._do_sign_driving(now)
-        elif self._sign_phase == "stopped":
-            self._do_sign_stopped(now)
-        elif self._sign_phase == "spinning":
-            self._do_sign_spinning(now)
-
-    def _do_sign_turning(self, now: float) -> None:
-        error = _normalize_angle(self._sign_target_yaw - self._yaw)
-        if abs(error) < 0.15:
-            self._sign_phase = "driving"
-            self._sign_drive_start = now
-            self._publish_vel(0.0, 0.0)
-        else:
-            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-            self._publish_vel(0.0, angular)
-
-    def _do_sign_driving(self, now: float) -> None:
-        if now - self._sign_drive_start > 6.0 or self._regions.front < 0.35:
-            self._transition(State.EXPLORING)
-            return
-        self._publish_vel(MAX_LINEAR, 0.0)
-
-    def _do_sign_stopped(self, now: float) -> None:
-        if now - self._sign_drive_start > 2.0:
-            self._transition(State.EXPLORING)
-            return
-        self._publish_vel(0.0, 0.0)
-
-    def _do_sign_spinning(self, now: float) -> None:
-        if now - self._sign_drive_start > 5.0:
-            self._transition(State.EXPLORING)
-            return
-        self._publish_vel(0.0, MAX_ANGULAR)
-
-    # ------------------------------------------------------------------
-    #  GOAL_SEEK
-    # ------------------------------------------------------------------
-
-    def _do_goal_seek(self) -> None:
-        if self._regions.front < 0.3:
-            self.get_logger().info("MISSION COMPLETE - Goal zone reached!")
-            self._transition(State.MISSION_COMPLETE)
-            return
-        self._publish_vel(MAX_LINEAR, 0.0)
-
-    # ------------------------------------------------------------------
-    #  RECOVERY (3 strategies, cycled)
-    # ------------------------------------------------------------------
-
-    def _setup_recovery(self) -> None:
-        self._recovery_start = time.monotonic()
-        self._recovery_target_yaw = _normalize_angle(self._yaw + math.pi / 2)
-
-    def _do_recovery(self) -> None:
-        elapsed = time.monotonic() - self._recovery_start
-        strategy = self._recovery_index % 3
+    def _do_recover(self, now: float):
+        elapsed = now - self._rec_t
+        strategy = self._recovery_count % 3
 
         if strategy == 0:
-            self._do_recovery_spin(elapsed)
+            # Spin 360°
+            if elapsed > 7:
+                self._end_recovery()
+            else:
+                self._vel(0, 0.6)
         elif strategy == 1:
-            self._do_recovery_backtrack(elapsed)
-        elif strategy == 2:
-            self._do_recovery_escape(elapsed)
-
-    def _do_recovery_spin(self, elapsed: float) -> None:
-        """Strategy 1: Spin in place (~360 deg at 0.5 rad/s)."""
-        if elapsed > 6.5:
-            self._finish_recovery()
-            return
-        self._publish_vel(0.0, 0.5)
-
-    def _do_recovery_backtrack(self, elapsed: float) -> None:
-        """Strategy 2: Backtrack 0.3 m at -0.15 m/s."""
-        if elapsed > 2.0:
-            self._finish_recovery()
-            return
-        self._publish_vel(-0.15, 0.0)
-
-    def _do_recovery_escape(self, elapsed: float) -> None:
-        """Strategy 3: Reverse 0.5 m then turn 90 deg."""
-        if elapsed < 3.3:
-            self._publish_vel(-0.15, 0.0)
-        elif elapsed < 7.0:
-            error = _normalize_angle(
-                self._recovery_target_yaw - self._yaw)
-            if abs(error) < 0.2:
-                self._finish_recovery()
-                return
-            angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-            self._publish_vel(0.0, angular)
+            # Reverse
+            if elapsed > 3:
+                self._end_recovery()
+            else:
+                self._vel(-0.2, 0)
         else:
-            self._finish_recovery()
+            # Reverse + turn 180°
+            if elapsed < 2:
+                self._vel(-0.2, 0)
+            elif elapsed < 6:
+                err = _norm(self._rec_yaw - self._yaw_val)
+                if abs(err) < 0.2:
+                    self._end_recovery()
+                else:
+                    self._vel(0, _clamp(err * 1.5, -MAX_ANG, MAX_ANG))
+            else:
+                self._end_recovery()
 
-    def _finish_recovery(self) -> None:
-        self._recovery_index += 1
-        now = time.monotonic()
-        self._last_move_time = now
-        self._last_recovery_end = now  # Cooldown timer
-        self._prev_wall_error = 0.0
-        # Alternate wall-following direction to explore different areas
+    def _end_recovery(self):
+        self._recovery_count += 1
         self._follow_left = not self._follow_left
-        direction = "LEFT" if self._follow_left else "RIGHT"
-        self.get_logger().info(f"Recovery done: now following {direction} wall")
-        # Clear ALL history so loop detection does not re-trigger
-        self._position_history.clear()
-        self._last_record_time = now
-        self._visited_cells.clear()
-        self._cell_visit_count.clear()
-        self._transition(State.EXPLORING)
+        side = "LEFT" if self._follow_left else "RIGHT"
+        self.get_logger().info(f"Recovery done → follow {side} wall")
+        self._last_move_t = time.monotonic()
+        self._set_state(State.EXPLORING)
 
-    # ------------------------------------------------------------------
-    #  Loop detection (position-history based)
-    # ------------------------------------------------------------------
+    # ── Velocity ──────────────────────────────────────────────────────────
 
-    def _detect_loop(self) -> bool:
-        """Check if the robot is near a position it occupied >60 s ago."""
-        now = time.monotonic()
-        for record in self._position_history:
-            age = now - record.timestamp
-            if age < LOOP_TIME_THRESHOLD:
-                continue
-            dist = math.hypot(self._x - record.x, self._y - record.y)
-            if dist < LOOP_REVISIT_DIST:
-                return True
-        return False
-
-    # ------------------------------------------------------------------
-    #  Velocity publishing
-    # ------------------------------------------------------------------
-
-    def _publish_vel(self, linear: float, angular: float) -> None:
-        twist = Twist()
-        twist.linear.x = _clamp(linear, -MAX_LINEAR, MAX_LINEAR)
-        twist.angular.z = _clamp(angular, -MAX_ANGULAR, MAX_ANGULAR)
-        self._cmd_pub.publish(twist)
+    def _vel(self, lin: float, ang: float):
+        t = Twist()
+        t.linear.x = _clamp(lin, -MAX_LIN, MAX_LIN)
+        t.angular.z = _clamp(ang, -MAX_ANG, MAX_ANG)
+        self._cmd.publish(t)
 
 
-# ---------------------------------------------------------------------------
-#  Entry point
-# ---------------------------------------------------------------------------
-
-def main(args=None) -> None:
+def main(args=None):
     rclpy.init(args=args)
-    node = MissionController()
+    n = MissionController()
     try:
-        rclpy.spin(node)
+        rclpy.spin(n)
     except KeyboardInterrupt:
         pass
     finally:
-        node.destroy_node()
+        n.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()
