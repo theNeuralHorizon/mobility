@@ -51,7 +51,7 @@ KP: Final[float] = 1.0
 KD: Final[float] = 0.5
 
 # Stuck detection
-STUCK_TIMEOUT: Final[float] = 10.0
+STUCK_TIMEOUT: Final[float] = 7.0
 STUCK_MOVE_THRESHOLD: Final[float] = 0.1
 
 # Loop detection (position history based)
@@ -445,8 +445,10 @@ class MissionController(Node):
         cell = _pos_to_cell(self._x, self._y)
         visits = self._cell_visit_count.get(cell, 0)
 
-        # Cell revisit tracking for diagnostics only (no override)
-        # The wall-follower + recovery handles exploration adequately
+        # Override wall-follower when cell is revisited too often
+        if visits >= REVISIT_LIMIT:
+            self._do_exploring_override()
+            return
 
         linear, angular, new_error = _wall_follow_cmd(
             self._regions, self._prev_wall_error)
@@ -566,12 +568,14 @@ class MissionController(Node):
 
     def _do_recovery(self) -> None:
         elapsed = time.monotonic() - self._recovery_start
-        strategy = self._recovery_index % 3
+        strategy = self._recovery_index % 4
 
         if strategy == 0:
             self._do_recovery_spin(elapsed)
         elif strategy == 1:
             self._do_recovery_backtrack(elapsed)
+        elif strategy == 3:
+            self._do_recovery_reorient(elapsed)
         elif strategy == 2:
             self._do_recovery_escape(elapsed)
 
@@ -603,6 +607,32 @@ class MissionController(Node):
             self._publish_vel(0.0, angular)
         else:
             self._finish_recovery()
+
+    def _do_recovery_reorient(self, elapsed: float) -> None:
+        """Strategy 4: Turn toward the longest open LiDAR direction."""
+        if elapsed > 5.0:
+            self._finish_recovery()
+            return
+        r = self._regions
+        # Find the direction with the most open space
+        directions = {
+            'left': (r.left, MAX_ANGULAR),
+            'fleft': (r.fleft, MAX_ANGULAR * 0.6),
+            'front': (r.front, 0.0),
+            'fright': (r.fright, -MAX_ANGULAR * 0.6),
+            'right': (r.right, -MAX_ANGULAR),
+        }
+        best_dir = max(directions.items(), key=lambda d: d[1][0])
+        best_range, best_angular = best_dir[1]
+        if best_range > WALL_FAR:
+            # Open space found — turn toward it then drive
+            if abs(best_angular) < 0.1:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._publish_vel(0.05, best_angular)
+        else:
+            # No clear opening — spin slowly
+            self._publish_vel(0.0, MAX_ANGULAR * 0.5)
 
     def _finish_recovery(self) -> None:
         self._recovery_index += 1

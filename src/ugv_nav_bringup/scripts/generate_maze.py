@@ -144,8 +144,25 @@ print(f"\nGenerated {wall_id} wall segments")
 
 # ---- Sign model helper ---------------------------------------------------
 
-def sign_model(name: str, x: float, y: float, r: float, g: float, b: float) -> str:
-    """Sign on a post at robot camera height."""
+def sign_model(
+    name: str, x: float, y: float,
+    r: float, g: float, b: float,
+    texture: str = "",
+) -> str:
+    """Sign on a post at robot camera height, with optional texture."""
+    if texture:
+        mat = (
+            f'          <material><diffuse>{r} {g} {b} 1</diffuse>\n'
+            f'            <pbr><metal>\n'
+            f'              <albedo_map>../textures/{texture}</albedo_map>\n'
+            f'            </metal></pbr>\n'
+            f'          </material>\n'
+        )
+    else:
+        mat = (
+            f'          <material><ambient>{r} {g} {b} 1</ambient>'
+            f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
+        )
     return (
         f'    <model name="{name}"><static>true</static>\n'
         f'      <pose>{x} {y} 0 0 0 0</pose>\n'
@@ -161,16 +178,18 @@ def sign_model(name: str, x: float, y: float, r: float, g: float, b: float) -> s
         f'        <visual name="face"><geometry><box>'
         f'<size>0.25 0.25 0.01</size></box></geometry>\n'
         f'          <pose>0 0 0.28 0 0 0</pose>\n'
-        f'          <material><ambient>{r} {g} {b} 1</ambient>'
-        f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
+        + mat +
         f'        </visual>\n'
         f'      </link>\n'
         f'    </model>'
     )
 
 
-def aruco_model(name: str, x: float, y: float, on_wall_y: bool = True) -> str:
-    """ArUco marker on a wall at camera height."""
+def aruco_model(
+    name: str, x: float, y: float,
+    marker_id: int, on_wall_y: bool = True,
+) -> str:
+    """ArUco marker on a wall at camera height, with PBR texture."""
     if on_wall_y:
         pose = f'{x} {y} 0.15 1.5708 0 0'
     else:
@@ -180,9 +199,51 @@ def aruco_model(name: str, x: float, y: float, on_wall_y: bool = True) -> str:
         f'      <pose>{pose}</pose>\n'
         f'      <link name="l"><visual name="v"><geometry><box>'
         f'<size>0.3 0.3 0.01</size></box></geometry>\n'
-        f'        <material><ambient>1 1 1 1</ambient>'
-        f'<diffuse>1 1 1 1</diffuse></material></visual></link>\n'
+        f'        <material><diffuse>1 1 1 1</diffuse>\n'
+        f'          <pbr><metal>\n'
+        f'            <albedo_map>../textures/aruco_{marker_id}.png</albedo_map>\n'
+        f'          </metal></pbr>\n'
+        f'        </material></visual></link>\n'
         f'    </model>'
+    )
+
+
+def dynamic_obstacle_actor(
+    name: str,
+    waypoints: list[tuple[float, float, float]],
+    size: tuple[float, float, float] = (0.3, 0.3, 0.5),
+) -> str:
+    """Create a Gazebo actor that patrols between waypoints.
+
+    Actors are visible to gpu_lidar and camera but have no physical collision.
+    """
+    wp_xml = ""
+    for t, x, y in waypoints:
+        wp_xml += (
+            f'          <waypoint>\n'
+            f'            <time>{t}</time>\n'
+            f'            <pose>{x} {y} 0 0 0 0</pose>\n'
+            f'          </waypoint>\n'
+        )
+    sx, sy, sz = size
+    return (
+        f'    <actor name="{name}">\n'
+        f'      <pose>{waypoints[0][1]} {waypoints[0][2]} 0 0 0 0</pose>\n'
+        f'      <link name="link">\n'
+        f'        <visual name="v">\n'
+        f'          <geometry><box><size>{sx} {sy} {sz}</size></box></geometry>\n'
+        f'          <material><ambient>0.8 0.2 0.2 1</ambient>'
+        f'<diffuse>0.8 0.2 0.2 1</diffuse></material>\n'
+        f'        </visual>\n'
+        f'      </link>\n'
+        f'      <script>\n'
+        f'        <loop>true</loop>\n'
+        f'        <auto_start>true</auto_start>\n'
+        f'        <trajectory id="0" type="square">\n'
+        + wp_xml +
+        f'        </trajectory>\n'
+        f'      </script>\n'
+        f'    </actor>'
     )
 
 
@@ -299,19 +360,20 @@ sdf = f'''<?xml version="1.0" ?>
       </link>
     </model>
 
-    <!-- ArUco markers at accessible locations, camera height -->
-{aruco_model("aruco_0", 3.0, 2.15, on_wall_y=True)}
-{aruco_model("aruco_1", 9.0, 0.15, on_wall_y=True)}
-{aruco_model("aruco_2", 3.0, 8.85, on_wall_y=True)}
-{aruco_model("aruco_3", 7.0, 5.0, on_wall_y=False)}
+    <!-- ArUco markers at accessible locations, camera height (with textures) -->
+{aruco_model("aruco_0", 3.0, 2.15, marker_id=0, on_wall_y=True)}
+{aruco_model("aruco_1", 9.0, 0.15, marker_id=1, on_wall_y=True)}
+{aruco_model("aruco_2", 3.0, 8.85, marker_id=2, on_wall_y=True)}
+{aruco_model("aruco_3", 7.0, 5.0, marker_id=3, on_wall_y=False)}
 
-    <!-- Directional signs on posts -->
-{sign_model("sign_forward_1", 1.0, 2.5, 0, 0.8, 0.8)}
-{sign_model("sign_right", 3.0, 1.0, 0, 0, 0.8)}
-{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0)}
-{sign_model("sign_forward_2", 7.0, 3.0, 0, 0.8, 0.8)}
-{sign_model("sign_stop", 9.0, 3.0, 0.8, 0, 0)}
-{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0)}
+    <!-- Directional signs on posts (with textures) -->
+{sign_model("sign_forward_1", 1.0, 2.5, 0, 0.8, 0.8, texture="sign_forward.png")}
+{sign_model("sign_right", 3.0, 1.0, 0, 0, 0.8, texture="sign_right.png")}
+{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0, texture="sign_left.png")}
+{sign_model("sign_forward_2", 7.0, 3.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+{sign_model("sign_stop", 9.0, 3.0, 0.8, 0, 0, texture="sign_stop.png")}
+{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0, texture="sign_goal.png")}
+{sign_model("sign_inplace_rotation", 5.0, 7.0, 0.6, 0, 0.6, texture="sign_inplace_rotation.png")}
 
     <!-- Static obstacles -->
     <model name="obs1"><static>true</static>
@@ -362,6 +424,11 @@ sdf = f'''<?xml version="1.0" ?>
         </visual>
       </link>
     </model>
+
+    <!-- Dynamic obstacles (actors: visible to gpu_lidar, no physical collision) -->
+{dynamic_obstacle_actor("patrol_corridor_1", [(0, 5.0, 3.0), (4, 5.0, 5.0), (8, 5.0, 3.0)])}
+{dynamic_obstacle_actor("patrol_corridor_2", [(0, 9.0, 5.0), (5, 9.0, 7.0), (10, 9.0, 5.0)])}
+{dynamic_obstacle_actor("patrol_corridor_3", [(0, 3.0, 7.0), (3, 5.0, 7.0), (6, 3.0, 7.0)], size=(0.25, 0.25, 0.4))}
 
   </world>
 </sdf>'''
