@@ -272,6 +272,7 @@ class MissionController(Node):
         # -- loop detection (position history) --
         self._position_history: list[PositionRecord] = []
         self._last_record_time: float = 0.0
+        self._loop_cooldown_until: float = 0.0  # suppress loop detection after recovery
 
         # -- recovery --
         self._recovery_index: int = 0
@@ -500,7 +501,11 @@ class MissionController(Node):
         """Return True (and enter RECOVERY) if a loop is detected."""
         if self._state != State.EXPLORING:
             return False
-        elapsed = time.monotonic() - self._start_time
+        now = time.monotonic()
+        # Suppress loop detection during post-recovery cooldown
+        if now < self._loop_cooldown_until:
+            return False
+        elapsed = now - self._start_time
         if elapsed > LOOP_ACTIVATION_DELAY and self._detect_loop():
             self.get_logger().warn("Loop detected - entering RECOVERY")
             self._transition(State.RECOVERY)
@@ -880,11 +885,13 @@ class MissionController(Node):
             self.get_logger().info(
                 f"Recovery done: keeping wall-follow {self._wall_follow_side}")
 
-        # On 3+ consecutive stucks in same area, wipe cell counts entirely
+        # On 3+ consecutive stucks in same area, wipe cell counts AND
+        # position history to give robot a completely fresh start
         if self._consecutive_stucks >= 3:
             self._cell_visit_count.clear()
             self._visited_cells.clear()
-            self.get_logger().warn("HARD RESET: cleared all cell visit counts")
+            self._position_history.clear()
+            self.get_logger().warn("HARD RESET: cleared all cell counts + position history")
         else:
             # Normal decay
             for cell in list(self._cell_visit_count):
@@ -892,12 +899,14 @@ class MissionController(Node):
                     1, self._cell_visit_count[cell] // 2)
 
         # POST-RECOVERY ESCAPE: drive toward gaps for 8 seconds
-        self._post_recovery_until = time.monotonic() + 8.0
+        now = time.monotonic()
+        self._post_recovery_until = now + 8.0
         self._post_recovery_start_x = self._x
         self._post_recovery_start_y = self._y
-        self.get_logger().info("Post-recovery gap drive: 8s")
-        # DO NOT clear position history — loop detector needs continuity.
-        self._last_record_time = time.monotonic()
+        # Suppress loop detection for 15s so gap drive can actually work
+        self._loop_cooldown_until = now + 15.0
+        self.get_logger().info("Post-recovery gap drive: 8s (loop check suppressed 15s)")
+        self._last_record_time = now
         self._transition(State.EXPLORING)
 
     # ------------------------------------------------------------------
