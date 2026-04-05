@@ -228,8 +228,8 @@ def dynamic_obstacle_model(
         f'    <model name="{name}">\n'
         f'      <pose>{x0} {y0} {sz / 2} 0 0 0</pose>\n'
         f'      <link name="link">\n'
-        f'        <inertial><mass>5.0</mass>\n'
-        f'          <inertia><ixx>0.1</ixx><iyy>0.1</iyy><izz>0.1</izz>'
+        f'        <inertial><mass>1.0</mass>\n'
+        f'          <inertia><ixx>0.01</ixx><iyy>0.01</iyy><izz>0.01</izz>'
         f'<ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>\n'
         f'        </inertial>\n'
         f'        <visual name="v">\n'
@@ -245,9 +245,10 @@ def dynamic_obstacle_model(
         f'              name="gz::sim::systems::TrajectoryFollower">\n'
         f'        <link_name>link</link_name>\n'
         f'        <loop>true</loop>\n'
-        f'        <force>10</force>\n'
-        f'        <torque>5</torque>\n'
-        f'        <range_tolerance>0.3</range_tolerance>\n'
+        f'        <force>30</force>\n'
+        f'        <torque>20</torque>\n'
+        f'        <range_tolerance>0.5</range_tolerance>\n'
+        f'        <bearing_tolerance>10</bearing_tolerance>\n'
         f'        <waypoints>\n'
         + wp_xml +
         f'        </waypoints>\n'
@@ -305,15 +306,15 @@ sdf = f'''<?xml version="1.0" ?>
       <direction>0.5 -0.3 -0.8</direction>
     </light>
 
-    <!-- Ground (centered on arena) -->
+    <!-- Ground (trimmed to arena) -->
     <model name="ground">
       <static>true</static>
       <pose>{arena_w / 2} {arena_h / 2} 0 0 0 0</pose>
       <link name="link">
         <collision name="c"><geometry><plane><normal>0 0 1</normal>
-          <size>20 20</size></plane></geometry></collision>
+          <size>{arena_w + 1} {arena_h + 1}</size></plane></geometry></collision>
         <visual name="v"><geometry><plane><normal>0 0 1</normal>
-          <size>20 20</size></plane></geometry>
+          <size>{arena_w + 1} {arena_h + 1}</size></plane></geometry>
           <material><ambient>0.5 0.5 0.5 1</ambient>
             <diffuse>0.5 0.5 0.5 1</diffuse></material>
         </visual>
