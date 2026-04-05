@@ -208,42 +208,51 @@ def aruco_model(
     )
 
 
-def dynamic_obstacle_actor(
+def dynamic_obstacle_model(
     name: str,
-    waypoints: list[tuple[float, float, float]],
+    waypoints: list[tuple[float, float]],
     size: tuple[float, float, float] = (0.3, 0.3, 0.5),
 ) -> str:
-    """Create a Gazebo actor that patrols between waypoints.
+    """Create a moving obstacle using model + trajectory-follower plugin.
 
-    Actors are visible to gpu_lidar and camera but have no physical collision.
+    Uses gz-sim-trajectory-follower-system which works with box primitives
+    (no mesh/skin needed). Models have collision, so robot will detect AND
+    physically interact with them.
     """
     wp_xml = ""
-    for t, x, y in waypoints:
-        wp_xml += (
-            f'          <waypoint>\n'
-            f'            <time>{t}</time>\n'
-            f'            <pose>{x} {y} 0 0 0 0</pose>\n'
-            f'          </waypoint>\n'
-        )
+    for x, y in waypoints:
+        wp_xml += f'        <waypoint>{x} {y}</waypoint>\n'
     sx, sy, sz = size
+    x0, y0 = waypoints[0]
     return (
-        f'    <actor name="{name}">\n'
-        f'      <pose>{waypoints[0][1]} {waypoints[0][2]} 0 0 0 0</pose>\n'
+        f'    <model name="{name}">\n'
+        f'      <pose>{x0} {y0} {sz / 2} 0 0 0</pose>\n'
         f'      <link name="link">\n'
+        f'        <inertial><mass>5.0</mass>\n'
+        f'          <inertia><ixx>0.1</ixx><iyy>0.1</iyy><izz>0.1</izz>'
+        f'<ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>\n'
+        f'        </inertial>\n'
         f'        <visual name="v">\n'
         f'          <geometry><box><size>{sx} {sy} {sz}</size></box></geometry>\n'
-        f'          <material><ambient>0.8 0.2 0.2 1</ambient>'
-        f'<diffuse>0.8 0.2 0.2 1</diffuse></material>\n'
+        f'          <material><ambient>0.8 0.15 0.15 1</ambient>'
+        f'<diffuse>0.85 0.2 0.2 1</diffuse></material>\n'
         f'        </visual>\n'
+        f'        <collision name="c">\n'
+        f'          <geometry><box><size>{sx} {sy} {sz}</size></box></geometry>\n'
+        f'        </collision>\n'
         f'      </link>\n'
-        f'      <script>\n'
+        f'      <plugin filename="gz-sim-trajectory-follower-system"\n'
+        f'              name="gz::sim::systems::TrajectoryFollower">\n'
+        f'        <link_name>link</link_name>\n'
         f'        <loop>true</loop>\n'
-        f'        <auto_start>true</auto_start>\n'
-        f'        <trajectory id="0" type="square">\n'
+        f'        <force>10</force>\n'
+        f'        <torque>5</torque>\n'
+        f'        <range_tolerance>0.3</range_tolerance>\n'
+        f'        <waypoints>\n'
         + wp_xml +
-        f'        </trajectory>\n'
-        f'      </script>\n'
-        f'    </actor>'
+        f'        </waypoints>\n'
+        f'      </plugin>\n'
+        f'    </model>'
     )
 
 
@@ -425,10 +434,10 @@ sdf = f'''<?xml version="1.0" ?>
       </link>
     </model>
 
-    <!-- Dynamic obstacles (actors: visible to gpu_lidar, no physical collision) -->
-{dynamic_obstacle_actor("patrol_corridor_1", [(0, 5.0, 3.0), (4, 5.0, 5.0), (8, 5.0, 3.0)])}
-{dynamic_obstacle_actor("patrol_corridor_2", [(0, 7.0, 5.0), (5, 7.0, 7.0), (10, 7.0, 5.0)])}
-{dynamic_obstacle_actor("patrol_corridor_3", [(0, 3.0, 7.0), (3, 5.0, 7.0), (6, 3.0, 7.0)], size=(0.25, 0.25, 0.4))}
+    <!-- Dynamic obstacles (models with trajectory-follower plugin) -->
+{dynamic_obstacle_model("patrol_1", [(5.0, 3.0), (5.0, 5.0)])}
+{dynamic_obstacle_model("patrol_2", [(7.0, 5.0), (7.0, 7.0)])}
+{dynamic_obstacle_model("patrol_3", [(3.0, 7.0), (5.0, 7.0)], size=(0.25, 0.25, 0.4))}
 
   </world>
 </sdf>'''
