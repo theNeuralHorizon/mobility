@@ -2,18 +2,33 @@
 # Generate robot SDF with all plugins (sensors included)
 # Usage: bash generate_robot_sdf.sh
 # Output: /tmp/mini_r1.sdf
+# Supports both Gazebo Fortress (ign) and Harmonic+ (gz)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WS_DIR="$HOME/mobility_ws"
 
-source /opt/ros/humble/setup.bash
+# Source ROS 2 (detect jazzy or humble)
+if [ -f /opt/ros/jazzy/setup.bash ]; then
+    source /opt/ros/jazzy/setup.bash
+elif [ -f /opt/ros/humble/setup.bash ]; then
+    source /opt/ros/humble/setup.bash
+fi
+
 source "$WS_DIR/install/setup.bash"
 
 # Generate base SDF from URDF
 xacro "$WS_DIR/src/mini_r1_v1_description/urdf/mini_r1.urdf.xacro" > /tmp/mini_r1.urdf
-ign sdf -p /tmp/mini_r1.urdf > /tmp/mini_r1_base.sdf
+
+# Detect Gazebo version: Harmonic uses `gz sdf`, Fortress uses `ign sdf`
+if command -v gz &>/dev/null && gz sdf --help &>/dev/null; then
+    echo "Using Gazebo Harmonic+ (gz sdf)"
+    gz sdf -p /tmp/mini_r1.urdf > /tmp/mini_r1_base.sdf
+else
+    echo "Using Gazebo Fortress (ign sdf)"
+    ign sdf -p /tmp/mini_r1.urdf > /tmp/mini_r1_base.sdf
+fi
 
 # Fix cmd_vel topic to absolute
 sed -i 's|<topic>cmd_vel</topic>|<topic>/cmd_vel</topic>|' /tmp/mini_r1_base.sdf
@@ -31,7 +46,7 @@ with open("/tmp/mini_r1_base.sdf", "r") as f:
 sensor_plugins = """
     <!-- ========== LiDAR Sensor ========== -->
     <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
-      <render_engine>ogre</render_engine>
+      <render_engine>ogre2</render_engine>
     </plugin>
 
     <plugin name='gz::sim::systems::Imu' filename='gz-sim-imu-system'>

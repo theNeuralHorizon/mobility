@@ -3,14 +3,13 @@
 <package format="3">
   <name>mini_r1_v1_gz</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Gazebo simulation launcher for mini_r1 robot</description>
   <maintainer email="vishnuraj2003@gmail.com">Vishnuraj</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>ros_gz_sim</depend>
-  <depend>twist_stamper</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

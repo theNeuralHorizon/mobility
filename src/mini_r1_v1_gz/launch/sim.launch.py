@@ -45,17 +45,9 @@ def generate_launch_description():
                            '-y', '0.0',
                            '-z', '0.07'],
                 output="screen"
-                    
+
                 )
-    
-    stamper = Node(
-                package="twist_stamper",
-                executable="twist_stamper",
-                remappings=[
-                    ('cmd_vel_in', 'cmd_vel'),
-                    ('cmd_vel_out', 'cmd_vel_stamped'),
-                ],
-    )
+
     bridge_params = os.path.join(get_package_share_directory(simulation_package), 'config', 'ros_gz_bridge.yaml')
     ros_gz_bridge = Node(
             package="ros_gz_bridge",
@@ -74,13 +66,28 @@ def generate_launch_description():
         )
     ]
 
-    return LaunchDescription([ 
+    nodes = [
         *launch_args,
         rsp,
-        stamper,
         gz,
         ros_gz_bridge,
-        spawn_entity
-       
+        spawn_entity,
+    ]
 
-    ])
+    # twist_stamper is optional — only add if available
+    try:
+        from ament_index_python.packages import get_package_prefix
+        get_package_prefix("twist_stamper")
+        stamper = Node(
+                    package="twist_stamper",
+                    executable="twist_stamper",
+                    remappings=[
+                        ('cmd_vel_in', 'cmd_vel'),
+                        ('cmd_vel_out', 'cmd_vel_stamped'),
+                    ],
+        )
+        nodes.append(stamper)
+    except Exception:
+        pass  # twist_stamper not installed, skip it
+
+    return LaunchDescription(nodes)

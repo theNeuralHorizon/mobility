@@ -3,7 +3,7 @@
 # ==========================================================
 - topic_name: "/clock"
   ros_type_name: "rosgraph_msgs/msg/Clock"
-  gz_type_name: "ignition.msgs.Clock"
+  gz_type_name: "gz.msgs.Clock"
   direction: GZ_TO_ROS
 
 # ==========================================================
@@ -12,13 +12,13 @@
 - ros_topic_name: "/cmd_vel_stamped"
   gz_topic_name: "/model/mini_r1/cmd_vel"
   ros_type_name: "geometry_msgs/msg/TwistStamped"
-  gz_type_name: "ignition.msgs.Twist"
+  gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
 
 - ros_topic_name: "/cmd_vel"
   gz_topic_name: "/model/mini_r1/cmd_vel"
   ros_type_name: "geometry_msgs/msg/Twist"
-  gz_type_name: "ignition.msgs.Twist"
+  gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
 
 # ==========================================================
@@ -27,22 +27,22 @@
 - ros_topic_name: "/r1_mini/odom"
   gz_topic_name: "/r1_mini/odom"
   ros_type_name: "nav_msgs/msg/Odometry"
-  gz_type_name: "ignition.msgs.Odometry"
+  gz_type_name: "gz.msgs.Odometry"
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/joint_states"
   gz_topic_name: "/r1_mini/joint_states"
   ros_type_name: "sensor_msgs/msg/JointState"
-  gz_type_name: "ignition.msgs.Model"
+  gz_type_name: "gz.msgs.Model"
   direction: GZ_TO_ROS
 
 # ==========================================================
-# TF (ONLY DYNAMIC TF — OK)
+# TF (ONLY DYNAMIC TF)
 # ==========================================================
 - ros_topic_name: "/tf"
   gz_topic_name: "/r1_mini/odom_tf"
   ros_type_name: "tf2_msgs/msg/TFMessage"
-  gz_type_name: "ignition.msgs.Pose_V"
+  gz_type_name: "gz.msgs.Pose_V"
   direction: GZ_TO_ROS
 
 # ==========================================================
@@ -51,23 +51,23 @@
 - ros_topic_name: "/r1_mini/lidar"
   gz_topic_name: "/r1_mini/lidar"
   ros_type_name: "sensor_msgs/msg/LaserScan"
-  gz_type_name: "ignition.msgs.LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/r1_mini/imu"
   gz_topic_name: "/r1_mini/imu"
   ros_type_name: "sensor_msgs/msg/Imu"
-  gz_type_name: "ignition.msgs.IMU"
+  gz_type_name: "gz.msgs.IMU"
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/r1_mini/camera/image_raw"
   gz_topic_name: "/r1_mini/camera"
   ros_type_name: "sensor_msgs/msg/Image"
-  gz_type_name: "ignition.msgs.Image"
+  gz_type_name: "gz.msgs.Image"
   direction: GZ_TO_ROS
 
 - ros_topic_name: "/r1_mini/camera/camera_info"
   gz_topic_name: "/r1_mini/camera_info"
   ros_type_name: "sensor_msgs/msg/CameraInfo"
-  gz_type_name: "ignition.msgs.CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
   direction: GZ_TO_ROS
