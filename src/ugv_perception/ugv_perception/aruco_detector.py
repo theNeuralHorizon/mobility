@@ -47,7 +47,7 @@ class ArucoDetector(Node):
         # Subscribers
         self._image_sub = self.create_subscription(
             Image,
-            "/r1_mini/camera/image_raw",
+            "/r1_mini/camera",
             self._image_callback,
             10,
         )

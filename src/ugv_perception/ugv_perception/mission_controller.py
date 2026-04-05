@@ -176,32 +176,48 @@ def _regions_from_scan(ranges: list[float]) -> LidarRegions:
 def _wall_follow_cmd(
     regions: LidarRegions,
     prev_error: float,
+    side: str = "right",
 ) -> tuple[float, float, float]:
     """Compute (linear, angular, new_prev_error) using PD wall-follower.
 
-    Returns the raw command from the right-wall-following algorithm.
+    Supports both right-wall and left-wall following via the 'side' parameter.
     """
     r = regions
 
     if r.front < FRONT_STOP:
-        return 0.0, MAX_ANGULAR, prev_error
+        turn = MAX_ANGULAR if side == "right" else -MAX_ANGULAR
+        return 0.0, turn, prev_error
 
     if r.front < FRONT_SLOW:
-        return 0.08, MAX_ANGULAR * 0.6, prev_error
+        turn = MAX_ANGULAR * 0.6 if side == "right" else -MAX_ANGULAR * 0.6
+        return 0.08, turn, prev_error
 
-    if r.fright < WALL_CLOSE:
-        return MAX_LINEAR * 0.7, 0.3, prev_error
-
-    if r.right > WALL_FAR and r.fright > WALL_FAR:
-        return MAX_LINEAR, -0.15, prev_error
-
-    if r.right < SAFE_RANGE_MAX:
-        error = WALL_DIST - r.right
-        d_error = error - prev_error
-        angular = _clamp(KP * error + KD * d_error, -MAX_ANGULAR, MAX_ANGULAR)
-        return MAX_LINEAR, angular, error
-
-    return MAX_LINEAR, -0.2, prev_error
+    if side == "right":
+        # Right-wall following
+        if r.fright < WALL_CLOSE:
+            return MAX_LINEAR * 0.7, 0.3, prev_error
+        if r.right > WALL_FAR and r.fright > WALL_FAR:
+            return MAX_LINEAR, -0.15, prev_error
+        if r.right < SAFE_RANGE_MAX:
+            error = WALL_DIST - r.right
+            d_error = error - prev_error
+            angular = _clamp(KP * error + KD * d_error,
+                             -MAX_ANGULAR, MAX_ANGULAR)
+            return MAX_LINEAR, angular, error
+        return MAX_LINEAR, -0.2, prev_error
+    else:
+        # Left-wall following (mirror of right)
+        if r.fleft < WALL_CLOSE:
+            return MAX_LINEAR * 0.7, -0.3, prev_error
+        if r.left > WALL_FAR and r.fleft > WALL_FAR:
+            return MAX_LINEAR, 0.15, prev_error
+        if r.left < SAFE_RANGE_MAX:
+            error = WALL_DIST - r.left
+            d_error = error - prev_error
+            angular = _clamp(-(KP * error + KD * d_error),
+                             -MAX_ANGULAR, MAX_ANGULAR)
+            return MAX_LINEAR, angular, error
+        return MAX_LINEAR, 0.2, prev_error
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +252,7 @@ class MissionController(Node):
 
         # -- PD wall-follow state --
         self._prev_wall_error: float = 0.0
+        self._wall_follow_side: str = "right"
 
         # -- visited-cell tracking --
         self._visited_cells: set[tuple[int, int]] = set()
@@ -484,38 +501,45 @@ class MissionController(Node):
             return
 
         linear, angular, new_error = _wall_follow_cmd(
-            self._regions, self._prev_wall_error)
+            self._regions, self._prev_wall_error, self._wall_follow_side)
         self._prev_wall_error = new_error
         self._publish_vel(linear, angular)
 
     def _do_exploring_override(self) -> None:
         """Override wall-follower when current cell revisited too often.
 
-        Strategy: if the normal wall-follower would turn right (or go
-        straight), force a left turn instead.  If already turning left,
-        go straight.  This breaks the repetitive loop pattern.
+        Flips wall-following side and steers toward open space.
         """
+        # Flip wall-following side to break the loop pattern
+        old_side = self._wall_follow_side
+        self._wall_follow_side = (
+            "left" if old_side == "right" else "right")
+        self.get_logger().info(
+            f"Cell revisit override: switching wall-follow "
+            f"{old_side} -> {self._wall_follow_side}")
+
         r = self._regions
 
         if r.front < FRONT_STOP:
-            # Still need to avoid frontal collision - turn left hard
-            self._publish_vel(0.0, MAX_ANGULAR)
+            turn = MAX_ANGULAR if self._wall_follow_side == "right" else -MAX_ANGULAR
+            self._publish_vel(0.0, turn)
             return
 
-        # Prefer going toward the least-visited adjacent direction
-        if r.left > WALL_CLOSE and r.fleft > WALL_CLOSE:
-            # Left is open - override: turn left
-            self.get_logger().info(
-                "Cell revisit override: turning LEFT to break loop")
-            self._publish_vel(MAX_LINEAR * 0.8, 0.3)
-        elif r.front > FRONT_SLOW:
-            # Straight is open - just go forward
-            self.get_logger().info(
-                "Cell revisit override: going STRAIGHT to break loop")
-            self._publish_vel(MAX_LINEAR, 0.0)
+        # Steer toward the open side
+        if self._wall_follow_side == "left":
+            if r.left > WALL_CLOSE and r.fleft > WALL_CLOSE:
+                self._publish_vel(MAX_LINEAR * 0.8, 0.3)
+            elif r.front > FRONT_SLOW:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._publish_vel(0.05, MAX_ANGULAR * 0.7)
         else:
-            # Fallback: slow left turn
-            self._publish_vel(0.05, MAX_ANGULAR * 0.7)
+            if r.right > WALL_CLOSE and r.fright > WALL_CLOSE:
+                self._publish_vel(MAX_LINEAR * 0.8, -0.3)
+            elif r.front > FRONT_SLOW:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._publish_vel(0.05, -MAX_ANGULAR * 0.7)
 
     # ------------------------------------------------------------------
     #  SIGN_FOLLOW
@@ -715,6 +739,11 @@ class MissionController(Node):
         self._recovery_index += 1
         self._last_move_time = time.monotonic()
         self._prev_wall_error = 0.0
+        # Flip wall-following side to explore differently
+        old = self._wall_follow_side
+        self._wall_follow_side = "left" if old == "right" else "right"
+        self.get_logger().info(
+            f"Recovery done: wall-follow {old} -> {self._wall_follow_side}")
         # Clear history so loop detection does not immediately re-trigger
         self._position_history.clear()
         self._last_record_time = time.monotonic()

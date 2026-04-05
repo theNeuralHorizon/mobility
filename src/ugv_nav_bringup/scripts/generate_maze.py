@@ -243,6 +243,7 @@ sdf = f'''<?xml version="1.0" ?>
       <ambient>0.6 0.6 0.6 1</ambient>
       <background>0.7 0.8 0.95 1</background>
       <shadows>true</shadows>
+      <grid>false</grid>
     </scene>
 
     <light type="directional" name="sun">
