@@ -313,9 +313,14 @@
       </link>
     </model>
 
-    <!-- ArUco markers at accessible locations, camera height (with textures) -->
+    <!-- ============================================================== -->
+    <!-- ArUco markers ON wall surfaces, camera height z=0.15           -->
+    <!-- ============================================================== -->
+
+    <!-- aruco_0: On south face of horizontal wall at y=2, near x=3    -->
+    <!-- Robot travels north in cell(1,0), sees this on the wall ahead -->
     <model name="aruco_0"><static>true</static>
-      <pose>3.0 2.15 0.15 1.5708 0 0</pose>
+      <pose>3.0 1.925 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>
@@ -323,8 +328,11 @@
           </metal></pbr>
         </material></visual></link>
     </model>
+
+    <!-- aruco_1: On west face of vertical wall at x=4, near y=1      -->
+    <!-- Robot travels east along bottom row, sees this on wall ahead  -->
     <model name="aruco_1"><static>true</static>
-      <pose>9.0 0.15 0.15 1.5708 0 0</pose>
+      <pose>3.925 1.0 0.15 0 -1.5708 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>
@@ -332,8 +340,11 @@
           </metal></pbr>
         </material></visual></link>
     </model>
+
+    <!-- aruco_2: On south face of horizontal wall at y=4, near x=7   -->
+    <!-- Robot travels north in cell(3,1), sees this on wall ahead     -->
     <model name="aruco_2"><static>true</static>
-      <pose>3.0 8.85 0.15 1.5708 0 0</pose>
+      <pose>7.0 3.925 0.15 1.5708 0 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>
@@ -341,8 +352,11 @@
           </metal></pbr>
         </material></visual></link>
     </model>
+
+    <!-- aruco_3: On west face of vertical wall at x=10, near y=5     -->
+    <!-- Robot travels east in cell(4,2), sees this on wall ahead      -->
     <model name="aruco_3"><static>true</static>
-      <pose>7.0 5.0 0.15 0 1.5708 0</pose>
+      <pose>9.925 5.0 0.15 0 -1.5708 0</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.3 0.3 0.01</size></box></geometry>
         <material><diffuse>1 1 1 1</diffuse>
           <pbr><metal>
@@ -351,12 +365,14 @@
         </material></visual></link>
     </model>
 
-    <!-- Directional signs on posts (with textures) -->
-    <!-- Path: (0,0)->(1,0)->(1,1)->(2,1)->(2,2)->(3,2)->(4,2)->(4,1)->(5,1)->(5,0) -->
+    <!-- ============================================================== -->
+    <!-- Direction signs along intended path                            -->
+    <!-- Path: (0,0)>(1,0)>(1,1)>(2,1)>(2,2)>(3,2)>(4,2)>(4,1)>(5,1)>(5,0) -->
+    <!-- ============================================================== -->
 
-    <!-- TRUE: At (1,1) crossroads, guide north toward (1,2)/(2,1) corridor -->
-    <model name="sign_forward_1"><static>true</static>
-      <pose>3.0 3.0 0 0 0 0</pose>
+    <!-- 1. FORWARD at start zone — go north from (0,0) toward (0,1) -->
+    <model name="sign_fwd_start"><static>true</static>
+      <pose>1.0 1.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -375,31 +391,9 @@
       </link>
     </model>
 
-    <!-- MISLEADING: At (0,2) junction, LEFT would go west to dead-end (0,3) -->
-    <!-- Robot must U-turn from (0,3) and explore back east -->
-    <model name="sign_left_misleading"><static>true</static>
-      <pose>1.0 5.0 0 0 0 0</pose>
-      <link name="post">
-        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
-          <pose>0 0 0.125 0 0 0</pose>
-          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
-          <pose>0 0 0.28 0 0 0</pose>
-          <material><diffuse>0 0.8 0 1</diffuse>
-            <pbr><metal>
-              <albedo_map>../textures/sign_left.png</albedo_map>
-            </metal></pbr>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- TRUE: At (3,2) center, guide forward east toward (4,2) -->
-    <model name="sign_forward_2"><static>true</static>
-      <pose>7.0 5.0 0 0 0 0</pose>
+    <!-- 2. FORWARD east along row 0 — in cell(0,0) east side -->
+    <model name="sign_fwd_east"><static>true</static>
+      <pose>1.5 1.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -418,9 +412,51 @@
       </link>
     </model>
 
-    <!-- TRUE: At (4,2) junction, guide right/south toward (4,1)->(5,1)->(5,0) -->
-    <model name="sign_right"><static>true</static>
-      <pose>9.0 5.0 0 0 0 0</pose>
+    <!-- 3. FORWARD north in cell(1,0) — guide toward cell(1,1) -->
+    <model name="sign_fwd_10"><static>true</static>
+      <pose>3.0 1.5 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 4. FORWARD north in cell(1,1) — continue toward cell(1,2) area -->
+    <model name="sign_fwd_11"><static>true</static>
+      <pose>3.0 3.5 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 5. RIGHT at cell(1,1) junction — turn east toward cell(2,1) -->
+    <model name="sign_right_11"><static>true</static>
+      <pose>3.5 3.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -439,9 +475,9 @@
       </link>
     </model>
 
-    <!-- TRUE: STOP sign near false goal at (3,4) to slow robot down -->
-    <model name="sign_stop"><static>true</static>
-      <pose>7.0 7.0 0 0 0 0</pose>
+    <!-- 6. FORWARD north in cell(2,1) — toward cell(2,2) -->
+    <model name="sign_fwd_21"><static>true</static>
+      <pose>5.0 3.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
           <pose>0 0 0.125 0 0 0</pose>
@@ -451,16 +487,121 @@
       <link name="sign">
         <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
           <pose>0 0 0.28 0 0 0</pose>
-          <material><diffuse>0.8 0 0 1</diffuse>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
             <pbr><metal>
-              <albedo_map>../textures/sign_stop.png</albedo_map>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
             </metal></pbr>
           </material>
         </visual>
       </link>
     </model>
 
-    <!-- TRUE: GOAL sign at cell (5,0) where actual goal zone is -->
+    <!-- 7. FORWARD in cell(2,2) — continue east toward cell(3,2) -->
+    <model name="sign_fwd_22"><static>true</static>
+      <pose>5.0 5.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 8. RIGHT at cell(3,2) — turn south toward cell(4,2)/(4,1) -->
+    <model name="sign_right_32"><static>true</static>
+      <pose>7.5 5.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_right.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 9. FORWARD in cell(4,2) — continue south/east -->
+    <model name="sign_fwd_42"><static>true</static>
+      <pose>9.0 5.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 10. RIGHT at cell(4,1) — turn east toward cell(5,1) and goal -->
+    <model name="sign_right_41"><static>true</static>
+      <pose>9.0 3.5 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_right.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 11. FORWARD toward goal in cell(5,1) -->
+    <model name="sign_fwd_51"><static>true</static>
+      <pose>11.0 3.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0.8 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_forward.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 12. GOAL sign at cell(5,0) where actual goal zone is -->
     <model name="sign_goal"><static>true</static>
       <pose>11.0 1.5 0 0 0 0</pose>
       <link name="post">
@@ -481,7 +622,49 @@
       </link>
     </model>
 
-    <!-- INPLACE_ROTATION sign in upper corridor for bonus points -->
+    <!-- 13. MISLEADING: At (0,2) junction, LEFT goes to dead-end -->
+    <model name="sign_left_misleading"><static>true</static>
+      <pose>1.0 5.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0 0.8 0 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_left.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 14. STOP sign near false goal at cell(3,3) -->
+    <model name="sign_stop"><static>true</static>
+      <pose>9.0 7.0 0 0 0 0</pose>
+      <link name="post">
+        <visual name="post"><geometry><cylinder><radius>0.02</radius><length>0.25</length></cylinder></geometry>
+          <pose>0 0 0.125 0 0 0</pose>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+      </link>
+      <link name="sign">
+        <visual name="face"><geometry><box><size>0.25 0.25 0.01</size></box></geometry>
+          <pose>0 0 0.28 0 0 0</pose>
+          <material><diffuse>0.8 0 0 1</diffuse>
+            <pbr><metal>
+              <albedo_map>../textures/sign_stop.png</albedo_map>
+            </metal></pbr>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 15. INPLACE_ROTATION sign in upper corridor for bonus points -->
     <model name="sign_inplace_rotation"><static>true</static>
       <pose>5.0 9.0 0 0 0 0</pose>
       <link name="post">

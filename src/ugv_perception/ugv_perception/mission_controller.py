@@ -6,7 +6,7 @@ signs, and reaches the goal.
 
 Uses a PD controller to maintain a fixed distance from the right wall,
 with 5-region LiDAR decomposition for decision making.  An overlay grid
-tracks visited cells; when the robot revisits a cell 3+ times the
+tracks visited cells; when the robot revisits a cell 2+ times the
 wall-follower is overridden to break out of loops.
 
 States: EXPLORING, SIGN_FOLLOW, MARKER_APPROACH, GOAL_SEEK, RECOVERY,
@@ -57,13 +57,13 @@ STUCK_TIMEOUT: Final[float] = 7.0
 STUCK_MOVE_THRESHOLD: Final[float] = 0.1
 
 # Loop detection (position history based)
-LOOP_REVISIT_DIST: Final[float] = 0.8
-LOOP_TIME_THRESHOLD: Final[float] = 60.0
-LOOP_ACTIVATION_DELAY: Final[float] = 90.0
+LOOP_REVISIT_DIST: Final[float] = 0.5
+LOOP_TIME_THRESHOLD: Final[float] = 30.0
+LOOP_ACTIVATION_DELAY: Final[float] = 30.0
 
 # Visited-cell grid
 CELL_SIZE: Final[float] = 0.5
-REVISIT_LIMIT: Final[int] = 3
+REVISIT_LIMIT: Final[int] = 2
 
 # Markers
 REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
@@ -281,6 +281,8 @@ class MissionController(Node):
         self._last_recovery_x: float = 0.0
         self._last_recovery_y: float = 0.0
         self._post_recovery_until: float = 0.0  # escape drive timer
+        self._post_recovery_start_x: float = 0.0
+        self._post_recovery_start_y: float = 0.0
 
         # -- sign follow --
         self._sign_target_yaw: float = 0.0
@@ -512,7 +514,7 @@ class MissionController(Node):
     def _do_exploring(self) -> None:
         now = time.monotonic()
 
-        # Post-recovery escape: drive toward widest gap for 5s
+        # Post-recovery escape: drive toward widest gap
         if now < self._post_recovery_until:
             self._do_gap_drive()
             return
@@ -555,17 +557,16 @@ class MissionController(Node):
                               else MAX_ANGULAR)
         elif r.front < FRONT_SLOW:
             # Getting close — slow down and steer
-            self._publish_vel(0.1, best_angular * 0.5)
+            self._publish_vel(0.12, best_angular * 0.5)
         else:
-            # Open ahead — drive forward with slight bias toward best gap
+            # Open ahead — drive at full speed with bias toward best gap
             self._publish_vel(MAX_LINEAR, best_angular * 0.3)
 
     def _do_exploring_override(self) -> None:
         """Override wall-follower when current cell revisited too often.
 
         Flips wall-following side ONCE per cell entry, then steers toward
-        open space.  Previous version flipped every tick (10 Hz), causing
-        oscillation.
+        open space.
         """
         cell = _pos_to_cell(self._x, self._y)
 
@@ -651,9 +652,13 @@ class MissionController(Node):
             self._publish_vel(0.0, angular)
 
     def _do_sign_driving(self, now: float) -> None:
+        """Drive forward until wall or junction detected (not a fixed timer)."""
+        elapsed = now - self._sign_drive_start
+
+        # Wall ahead — stop driving
         if self._regions.front < 0.4:
-            # Hit a wall while following sign - classify as MISLEADING
-            if self._active_sign_entry is not None:
+            if self._active_sign_entry is not None and elapsed < 1.0:
+                # Hit wall immediately — misleading sign
                 self._active_sign_entry["misleading"] = True
                 self.get_logger().warn(
                     f"MISLEADING sign detected: "
@@ -661,18 +666,31 @@ class MissionController(Node):
                     f"({self._active_sign_entry['x']:.1f},"
                     f"{self._active_sign_entry['y']:.1f}) - BACKTRACKING")
                 self._active_sign_entry = None
-                # Backtrack: reverse toward pre-sign position
                 self._sign_phase = "backtracking"
                 self._sign_drive_start = now
-            else:
-                self._transition(State.EXPLORING)
-            return
-        if now - self._sign_drive_start > 2.0:
-            # Completed sign driving normally - sign was trustworthy
-            self.get_logger().info("Sign follow completed successfully")
+                return
+            self.get_logger().info("FORWARD sign: wall reached, resuming exploration")
             self._active_sign_entry = None
             self._transition(State.EXPLORING)
             return
+
+        # After 2s grace period, check for junction (side opening)
+        if elapsed > 2.0:
+            r = self._regions
+            if r.left > 1.2 or r.right > 1.2:
+                self.get_logger().info(
+                    "FORWARD sign: junction detected, resuming exploration")
+                self._active_sign_entry = None
+                self._transition(State.EXPLORING)
+                return
+
+        # Safety timeout at 15s
+        if elapsed > 15.0:
+            self.get_logger().info("FORWARD sign: timeout, resuming exploration")
+            self._active_sign_entry = None
+            self._transition(State.EXPLORING)
+            return
+
         self._publish_vel(MAX_LINEAR, 0.0)
 
     def _do_sign_stopped(self, now: float) -> None:
@@ -694,17 +712,14 @@ class MissionController(Node):
         dist = math.hypot(dx, dy)
 
         if dist < 0.3 or now - self._sign_drive_start > 5.0:
-            # Reached backtrack target or timeout
             self.get_logger().info("Backtrack complete - resuming exploration")
             self._transition(State.EXPLORING)
             return
 
         # Reverse toward pre-sign position
         if now - self._sign_drive_start < 2.0:
-            # Phase 1: reverse
             self._publish_vel(-0.15, 0.0)
         else:
-            # Phase 2: turn toward pre-sign position
             target_yaw = math.atan2(dy, dx)
             error = _normalize_angle(target_yaw - self._yaw)
             angular = _clamp(error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
@@ -731,7 +746,7 @@ class MissionController(Node):
         dist_from_last = math.hypot(
             self._x - self._last_recovery_x,
             self._y - self._last_recovery_y)
-        if dist_from_last < 1.0:
+        if dist_from_last < 1.5:
             self._consecutive_stucks += 1
         else:
             self._consecutive_stucks = 1
@@ -824,26 +839,21 @@ class MissionController(Node):
         """PANIC: Aggressive escape after 3+ consecutive stucks.
 
         Phase 1 (0-2s): Hard reverse
-        Phase 2 (2-5s): Turn ~180 degrees (using saved target yaw)
+        Phase 2 (2-5s): Turn ~180 degrees
         Phase 3 (5-8s): Drive forward into new area
         """
         if elapsed < 2.0:
             self._publish_vel(-MAX_LINEAR, 0.0)
         elif elapsed < 5.0:
-            # Use the target yaw saved at recovery start, NOT a live
-            # recomputation.  The old code recomputed yaw+pi every tick,
-            # so the error was always pi and the robot just spun.
             target = _normalize_angle(
                 self._recovery_target_yaw + math.pi)
             error = _normalize_angle(target - self._yaw)
             if abs(error) < 0.2:
-                # Close enough — skip to drive phase
                 self._publish_vel(0.0, 0.0)
             else:
                 angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
                 self._publish_vel(0.0, angular)
         elif elapsed < 8.0:
-            # Drive forward, dodge walls
             if self._regions.front < FRONT_STOP:
                 self._publish_vel(0.0, MAX_ANGULAR)
             else:
@@ -853,54 +863,41 @@ class MissionController(Node):
             self._consecutive_stucks = 0
             self._finish_recovery()
 
-    def _find_least_visited_direction(self) -> float:
-        """Return angular velocity toward the least-visited neighbouring area.
-
-        Checks the 4 cardinal neighbours of the current cell and picks
-        the direction with the lowest visit count that also has open
-        LiDAR space.
-        """
-        cx, cy = _pos_to_cell(self._x, self._y)
-        candidates = [
-            ((cx + 1, cy), 0.0),      # east  → front
-            ((cx - 1, cy), math.pi),   # west  → behind
-            ((cx, cy + 1), math.pi / 2),   # north → left
-            ((cx, cy - 1), -math.pi / 2),  # south → right
-        ]
-        best_ang = 0.0
-        best_score = float('inf')
-        for cell, heading_offset in candidates:
-            visits = self._cell_visit_count.get(cell, 0)
-            if visits < best_score:
-                best_score = visits
-                target_yaw = _normalize_angle(self._yaw + heading_offset)
-                error = _normalize_angle(target_yaw - self._yaw)
-                best_ang = _clamp(error, -MAX_ANGULAR, MAX_ANGULAR)
-        return best_ang
-
     def _finish_recovery(self) -> None:
         self._recovery_index += 1
         self._last_move_time = time.monotonic()
         self._prev_wall_error = 0.0
         self._wall_integral_error = 0.0
-        # Flip wall-following side to explore differently
-        old = self._wall_follow_side
-        self._wall_follow_side = "left" if old == "right" else "right"
-        self._override_flipped_cell = None  # allow override to flip again
-        self.get_logger().info(
-            f"Recovery done: wall-follow {old} -> {self._wall_follow_side}")
-        # POST-RECOVERY ESCAPE: drive toward gaps for 5 seconds
-        self._post_recovery_until = time.monotonic() + 5.0
-        self.get_logger().info("Post-recovery gap drive: 5s")
+
+        # Only flip wall-follow side every OTHER recovery (prevents oscillation)
+        if self._recovery_index % 2 == 1:
+            old = self._wall_follow_side
+            self._wall_follow_side = "left" if old == "right" else "right"
+            self._override_flipped_cell = None
+            self.get_logger().info(
+                f"Recovery done: wall-follow {old} -> {self._wall_follow_side}")
+        else:
+            self.get_logger().info(
+                f"Recovery done: keeping wall-follow {self._wall_follow_side}")
+
+        # On 3+ consecutive stucks in same area, wipe cell counts entirely
+        if self._consecutive_stucks >= 3:
+            self._cell_visit_count.clear()
+            self._visited_cells.clear()
+            self.get_logger().warn("HARD RESET: cleared all cell visit counts")
+        else:
+            # Normal decay
+            for cell in list(self._cell_visit_count):
+                self._cell_visit_count[cell] = max(
+                    1, self._cell_visit_count[cell] // 2)
+
+        # POST-RECOVERY ESCAPE: drive toward gaps for 8 seconds
+        self._post_recovery_until = time.monotonic() + 8.0
+        self._post_recovery_start_x = self._x
+        self._post_recovery_start_y = self._y
+        self.get_logger().info("Post-recovery gap drive: 8s")
         # DO NOT clear position history — loop detector needs continuity.
-        # Only reset the record timer so we don't get a stale gap.
         self._last_record_time = time.monotonic()
-        # DECAY visited-cell counts by 50% instead of wiping.
-        # This preserves memory of heavily-visited areas while giving
-        # the robot a chance to revisit lightly-visited cells.
-        for cell in list(self._cell_visit_count):
-            self._cell_visit_count[cell] = max(
-                1, self._cell_visit_count[cell] // 2)
         self._transition(State.EXPLORING)
 
     # ------------------------------------------------------------------
@@ -908,7 +905,7 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _detect_loop(self) -> bool:
-        """Check if the robot is near a position it occupied >60 s ago."""
+        """Check if the robot is near a position it occupied >30 s ago."""
         now = time.monotonic()
         for record in self._position_history:
             age = now - record.timestamp
