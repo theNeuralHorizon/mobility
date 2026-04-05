@@ -55,9 +55,9 @@ STUCK_TIMEOUT: Final[float] = 10.0
 STUCK_MOVE_THRESHOLD: Final[float] = 0.1
 
 # Loop detection (position history based)
-LOOP_REVISIT_DIST: Final[float] = 0.8
-LOOP_TIME_THRESHOLD: Final[float] = 60.0
-LOOP_ACTIVATION_DELAY: Final[float] = 90.0
+LOOP_REVISIT_DIST: Final[float] = 1.0
+LOOP_TIME_THRESHOLD: Final[float] = 120.0
+LOOP_ACTIVATION_DELAY: Final[float] = 180.0  # Only check after 3 minutes
 
 # Visited-cell grid
 CELL_SIZE: Final[float] = 0.5
@@ -250,6 +250,7 @@ class MissionController(Node):
         self._recovery_index: int = 0
         self._recovery_start: float = 0.0
         self._recovery_target_yaw: float = 0.0
+        self._last_recovery_end: float = 0.0  # Cooldown after recovery
 
         # -- sign follow --
         self._sign_target_yaw: float = 0.0
@@ -430,7 +431,11 @@ class MissionController(Node):
         """Return True (and enter RECOVERY) if a loop is detected."""
         if self._state != State.EXPLORING:
             return False
-        elapsed = time.monotonic() - self._start_time
+        now = time.monotonic()
+        # Don't check loops for 30s after last recovery
+        if now - self._last_recovery_end < 30.0:
+            return False
+        elapsed = now - self._start_time
         if elapsed > LOOP_ACTIVATION_DELAY and self._detect_loop():
             self.get_logger().warn("Loop detected - entering RECOVERY")
             self._transition(State.RECOVERY)
@@ -528,7 +533,7 @@ class MissionController(Node):
             self._publish_vel(0.0, angular)
 
     def _do_sign_driving(self, now: float) -> None:
-        if now - self._sign_drive_start > 2.0 or self._regions.front < 0.4:
+        if now - self._sign_drive_start > 4.0 or self._regions.front < 0.3:
             self._transition(State.EXPLORING)
             return
         self._publish_vel(MAX_LINEAR, 0.0)
@@ -606,12 +611,13 @@ class MissionController(Node):
 
     def _finish_recovery(self) -> None:
         self._recovery_index += 1
-        self._last_move_time = time.monotonic()
+        now = time.monotonic()
+        self._last_move_time = now
+        self._last_recovery_end = now  # Cooldown timer
         self._prev_wall_error = 0.0
-        # Clear history so loop detection does not immediately re-trigger
+        # Clear ALL history so loop detection does not re-trigger
         self._position_history.clear()
-        self._last_record_time = time.monotonic()
-        # Clear visited cells for fresh exploration after recovery
+        self._last_record_time = now
         self._visited_cells.clear()
         self._cell_visit_count.clear()
         self._transition(State.EXPLORING)
