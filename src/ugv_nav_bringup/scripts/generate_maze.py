@@ -427,7 +427,7 @@ sdf = f'''<?xml version="1.0" ?>
 
     <!-- Dynamic obstacles (actors: visible to gpu_lidar, no physical collision) -->
 {dynamic_obstacle_actor("patrol_corridor_1", [(0, 5.0, 3.0), (4, 5.0, 5.0), (8, 5.0, 3.0)])}
-{dynamic_obstacle_actor("patrol_corridor_2", [(0, 9.0, 5.0), (5, 9.0, 7.0), (10, 9.0, 5.0)])}
+{dynamic_obstacle_actor("patrol_corridor_2", [(0, 7.0, 5.0), (5, 7.0, 7.0), (10, 7.0, 5.0)])}
 {dynamic_obstacle_actor("patrol_corridor_3", [(0, 3.0, 7.0), (3, 5.0, 7.0), (6, 3.0, 7.0)], size=(0.25, 0.25, 0.4))}
 
   </world>
