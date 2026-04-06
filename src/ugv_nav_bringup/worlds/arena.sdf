@@ -373,9 +373,9 @@
       </visual></link>
     </model>
 
-    <!-- 2. FORWARD return — left boundary x=0, cell(0,1) (moved from y=4 wall to avoid aruco_0) -->
+    <!-- 2. FORWARD return — south boundary y=0, cell(0,0) area (well away from aruco_0) -->
     <model name="sign_forward_2"><static>true</static>
-      <pose>0.08 3.0 0.10 0 0 1.5708</pose>
+      <pose>0.08 2.0 0.10 0 0 1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>

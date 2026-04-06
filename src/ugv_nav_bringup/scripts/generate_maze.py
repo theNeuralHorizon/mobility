@@ -361,8 +361,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
 {sign_model("sign_forward_1", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 2. FORWARD return — left boundary x=0, cell(0,1) (moved from y=4 wall to avoid aruco_0) -->
-{sign_model("sign_forward_2", 0.08, 3.0, 0, 0.8, 0.8, facing="east")}
+    <!-- 2. FORWARD return — south boundary y=0, cell(0,0) area (well away from aruco_0) -->
+{sign_model("sign_forward_2", 0.08, 2.0, 0, 0.8, 0.8, facing="east")}
 
     <!-- 3. RIGHT east — south boundary y=0 (always exists), cell(0,0) -->
 {sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="north")}
