@@ -35,7 +35,7 @@ walls_v = [
     [True,  False, True,  False, True,  False, True],   # r=0
     [True,  True,  False, True,  False, False, True],    # r=1
     [True,  False, True,  False, False, True,  True],    # r=2
-    [True,  True,  False, False, True,  False, True],    # r=3
+    [True,  True,  False, False, False, False, True],    # r=3
     [True,  False, True,  False, True,  False, True],    # r=4
 ]
 
@@ -394,11 +394,16 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Put on east wall x=10, walls_v[0][5]=F... use right boundary x=12 -->
 {sign_model("sign_right_3", 9.0, 2.08, 0, 0, 0.8, facing="north")}
 
-    <!-- 13. FORWARD south — right boundary x=12 (always exists), cell(5,1) -->
-{sign_model("sign_forward_8", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 13. (REMOVED — sign_forward_8) -->
 
-    <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0) -->
-{sign_model("sign_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}
+    <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0), extended to full box width -->
+    <model name="sign_goal"><static>true</static>
+      <pose>11.0 0.08 0.10 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.6 0.01 0.20</size></box></geometry>
+        <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material>
+      </visual></link>
+    </model>
 
     <!-- 15. LEFT misleading — left boundary x=0, cell(0,2) (moved from y=4 wall to avoid aruco_0) -->
 {sign_model("sign_left_misleading", 0.08, 5.0, 0, 0.8, 0, facing="east")}
