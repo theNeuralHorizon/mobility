@@ -362,6 +362,9 @@
     <model name="sign_fwd_start"><static>true</static>
       <pose>0.3 1.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -379,6 +382,9 @@
     <model name="sign_fwd_east"><static>true</static>
       <pose>1.5 0.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -396,6 +402,9 @@
     <model name="sign_fwd_10"><static>true</static>
       <pose>2.3 1.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -413,6 +422,9 @@
     <model name="sign_fwd_11"><static>true</static>
       <pose>2.3 3.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -430,6 +442,9 @@
     <model name="sign_right_11"><static>true</static>
       <pose>3.5 2.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -447,6 +462,9 @@
     <model name="sign_fwd_21"><static>true</static>
       <pose>4.3 3.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -464,6 +482,9 @@
     <model name="sign_fwd_22"><static>true</static>
       <pose>5.0 4.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -481,6 +502,9 @@
     <model name="sign_right_32"><static>true</static>
       <pose>7.5 4.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -498,6 +522,9 @@
     <model name="sign_fwd_42"><static>true</static>
       <pose>9.0 4.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -515,6 +542,9 @@
     <model name="sign_right_41"><static>true</static>
       <pose>9.7 3.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -532,6 +562,9 @@
     <model name="sign_fwd_51"><static>true</static>
       <pose>11.0 2.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -549,6 +582,9 @@
     <model name="sign_goal"><static>true</static>
       <pose>11.7 1.5 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -566,6 +602,9 @@
     <model name="sign_left_misleading"><static>true</static>
       <pose>0.3 5.0 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -583,6 +622,9 @@
     <model name="sign_stop"><static>true</static>
       <pose>9.0 6.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -600,6 +642,9 @@
     <model name="sign_inplace_rotation"><static>true</static>
       <pose>5.0 8.3 0 0 0 0</pose>
       <link name="post">
+        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
+          <pose>0 0 0.10 0 0 0</pose>
+        </collision>
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
           <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
@@ -613,53 +658,66 @@
       </link>
     </model>
 
-    <!-- Static obstacles -->
+    <!-- Static obstacles — raised on pedestals so robot can't wedge under -->
+    <!-- Collision starts at z=0.10 (above robot height 0.08) to prevent flipping -->
     <model name="obs1"><static>true</static>
-      <pose>3.0 5.0 0.15 0 0 0.3</pose>
+      <pose>3.0 5.0 0 0 0 0.3</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs2"><static>true</static>
-      <pose>7.0 7.0 0.15 0 0 0.7</pose>
+      <pose>7.0 7.0 0 0 0 0.7</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs3"><static>true</static>
-      <pose>5.0 1.0 0.15 0 0 0.5</pose>
+      <pose>5.0 1.0 0 0 0 0.5</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs4"><static>true</static>
-      <pose>9.0 9.0 0.15 0 0 1.1</pose>
+      <pose>9.0 9.0 0 0 0 1.1</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
 

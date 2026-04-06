@@ -44,8 +44,8 @@ from std_msgs.msg import Int32MultiArray, String
 #  Constants
 # ---------------------------------------------------------------------------
 
-MAX_LINEAR: Final[float] = 0.5            # no hard cap in plugin — go fast
-MAX_ANGULAR: Final[float] = 1.2           # snappy turns for 1.85m corridors
+MAX_LINEAR: Final[float] = 0.4            # reduced from 0.5 to prevent flipping
+MAX_ANGULAR: Final[float] = 1.0           # reduced from 1.2 for stability
 WALL_DIST: Final[float] = 0.4
 KP: Final[float] = 1.4
 KI: Final[float] = 0.05

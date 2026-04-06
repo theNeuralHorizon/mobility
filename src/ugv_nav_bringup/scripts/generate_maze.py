@@ -171,6 +171,10 @@ def sign_model(
         f'    <model name="{name}"><static>true</static>\n'
         f'      <pose>{x} {y} 0 0 0 0</pose>\n'
         f'      <link name="post">\n'
+        f'        <collision name="post_col"><geometry><cylinder>'
+        f'<radius>0.03</radius><length>0.20</length></cylinder></geometry>\n'
+        f'          <pose>0 0 0.10 0 0 0</pose>\n'
+        f'        </collision>\n'
         f'        <visual name="post"><geometry><cylinder>'
         f'<radius>0.01</radius><length>0.12</length></cylinder></geometry>\n'
         f'          <pose>0 0 0.06 0 0 0</pose>\n'
@@ -412,53 +416,66 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 15. INPLACE_ROTATION in upper corridor — offset to bottom wall -->
 {sign_model("sign_inplace_rotation", 5.0, 8.3, 0.6, 0, 0.6, facing="west")}
 
-    <!-- Static obstacles -->
+    <!-- Static obstacles — raised on pedestals so robot can't wedge under -->
+    <!-- Collision starts at z=0.10 (above robot height 0.08) to prevent flipping -->
     <model name="obs1"><static>true</static>
-      <pose>3.0 5.0 0.15 0 0 0.3</pose>
+      <pose>3.0 5.0 0 0 0 0.3</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs2"><static>true</static>
-      <pose>7.0 7.0 0.15 0 0 0.7</pose>
+      <pose>7.0 7.0 0 0 0 0.7</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs3"><static>true</static>
-      <pose>5.0 1.0 0.15 0 0 0.5</pose>
+      <pose>5.0 1.0 0 0 0 0.5</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
     <model name="obs4"><static>true</static>
-      <pose>9.0 9.0 0.15 0 0 1.1</pose>
+      <pose>9.0 9.0 0 0 0 1.1</pose>
       <link name="l">
-        <collision name="c"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry></collision>
-        <visual name="v"><geometry><box><size>0.3 0.3 0.3</size>
-          </box></geometry>
+        <collision name="c"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry></collision>
+        <visual name="v"><pose>0 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.3 0.3 0.3</size></box></geometry>
           <material><ambient>0.5 0.3 0.1 1</ambient>
-            <diffuse>0.5 0.3 0.1 1</diffuse></material>
-        </visual>
+            <diffuse>0.5 0.3 0.1 1</diffuse></material></visual>
+        <visual name="pedestal"><pose>0 0 0.05 0 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.4 0.4 0.4 1</diffuse></material></visual>
       </link>
     </model>
 
