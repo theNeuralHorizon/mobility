@@ -373,13 +373,8 @@
       </visual></link>
     </model>
 
-    <!-- 2. FORWARD return — east wall x=2, walls_v[1][1]=T, cell(0,1) (different wall from aruco_0) -->
-    <model name="sign_forward_2"><static>true</static>
-      <pose>1.92 3.0 0.10 0 0 -1.5708</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
-        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-      </visual></link>
-    </model>
+    <!-- 2. (REMOVED — was overlapping aruco_0 visually from camera angle) -->
+    <!-- Wall-following handles return from (0,1) dead end naturally -->
 
     <!-- 3. RIGHT east — south boundary y=0 (always exists), cell(0,0) -->
     <model name="sign_right_1"><static>true</static>

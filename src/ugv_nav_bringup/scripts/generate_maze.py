@@ -361,8 +361,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
 {sign_model("sign_forward_1", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 2. FORWARD return — east wall x=2, walls_v[1][1]=T, cell(0,1) (different wall from aruco_0) -->
-{sign_model("sign_forward_2", 1.92, 3.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 2. (REMOVED — was overlapping aruco_0 visually from camera angle) -->
+    <!-- Wall-following handles return from (0,1) dead end naturally -->
 
     <!-- 3. RIGHT east — south boundary y=0 (always exists), cell(0,0) -->
 {sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="north")}
