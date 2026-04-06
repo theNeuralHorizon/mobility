@@ -584,6 +584,10 @@ class MissionController(Node):
         """Return True (and enter RECOVERY) if robot is stuck."""
         if self._state == State.RECOVERY:
             return False
+        # Don't trigger stuck during room scan (robot is rotating in place)
+        if self._scanning:
+            self._last_move_time = time.monotonic()
+            return False
         stuck_secs = time.monotonic() - self._last_move_time
         if stuck_secs > STUCK_TIMEOUT:
             self.get_logger().warn(
