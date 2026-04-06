@@ -390,7 +390,9 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 8. FORWARD east — east wall x=8 area, cell(3,2) (moved from y=4 wall to avoid aruco_2) -->
 {sign_model("sign_forward_6", 6.08, 5.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 9. (removed — was blocking aruco_3) -->
+    <!-- 9. RIGHT south — north wall of cell(4,2), walls_h[3][4]=T at y=6 -->
+    <!-- Guides robot south to cell(4,1) after seeing aruco_3, 1.3m from aruco_3 -->
+{sign_model("sign_right_4", 9.0, 5.92, 0, 0, 0.8, facing="south")}
 
     <!-- 10. LEFT west — east wall x=10, walls_v[1][5]=F... use south wall y=2, walls_h[1][4]=T -->
 {sign_model("sign_left_1", 9.0, 2.08, 0, 0.8, 0, facing="north")}

@@ -432,7 +432,14 @@
       </visual></link>
     </model>
 
-    <!-- 9. (removed — was blocking aruco_3) -->
+    <!-- 9. RIGHT south — north wall of cell(4,2), walls_h[3][4]=T at y=6 -->
+    <!-- Guides robot south to cell(4,1) after seeing aruco_3, 1.3m from aruco_3 -->
+    <model name="sign_right_4"><static>true</static>
+      <pose>9.0 5.92 0.10 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
 
     <!-- 10. LEFT west — east wall x=10, walls_v[1][5]=F... use south wall y=2, walls_h[1][4]=T -->
     <model name="sign_left_1"><static>true</static>

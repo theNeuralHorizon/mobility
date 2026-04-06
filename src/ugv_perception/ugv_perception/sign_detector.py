@@ -1,6 +1,6 @@
 """Directional sign detection node for UGV Navigation Challenge.
 
-Detects directional signs (LEFT, RIGHT, FORWARD, STOP, INPLACE_ROTATION, GOAL)
+Detects directional signs (LEFT, RIGHT, FORWARD, STOP, GOAL)
 from the robot camera feed using HSV color segmentation.
 
 Topics:
@@ -20,7 +20,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 VALID_DIRECTIONS = frozenset({
-    "LEFT", "RIGHT", "FORWARD", "STOP", "INPLACE_ROTATION", "GOAL",
+    "LEFT", "RIGHT", "FORWARD", "STOP", "GOAL",
 })
 
 
@@ -36,7 +36,9 @@ class _SignColor:
     ranges: tuple[_HsvRange, ...]
 
 
-# HSV ranges for each sign color (matching arena sign textures)
+# HSV ranges for each sign color
+# INPLACE_ROTATION removed entirely — H:20-35 caused constant false positives
+# across the maze from wall reflections and obstacles
 SIGN_COLORS: tuple[_SignColor, ...] = (
     _SignColor("LEFT", (
         _HsvRange((40, 120, 120), (75, 255, 255)),
@@ -50,9 +52,6 @@ SIGN_COLORS: tuple[_SignColor, ...] = (
     _SignColor("STOP", (
         _HsvRange((0, 100, 100), (10, 255, 255)),
         _HsvRange((170, 100, 100), (180, 255, 255)),
-    )),
-    _SignColor("INPLACE_ROTATION", (
-        _HsvRange((20, 100, 100), (35, 255, 255)),
     )),
     _SignColor("GOAL", (
         _HsvRange((10, 150, 150), (25, 255, 255)),
@@ -112,10 +111,7 @@ class SignDetector(Node):
         min_area = self.get_parameter("min_detection_area").value
         cooldown = self.get_parameter("cooldown_sec").value
 
-        # Crop to top 60% of frame to exclude floor surfaces.
-        # Signs are mounted on posts at ~0.28m; the floor (green start
-        # zone, gold goal zone) fills the bottom of the image and causes
-        # false positives (e.g. green floor → LEFT, gold floor → GOAL).
+        # Crop to top 60% of frame to exclude floor surfaces
         h = frame.shape[0]
         crop_h = int(h * 0.6)
         roi = frame[:crop_h, :]
