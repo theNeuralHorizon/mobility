@@ -320,6 +320,8 @@ class MissionController(Node):
         # -- room-level local map (2m grid matching maze) --
         self._room_status: dict[tuple[int, int], RoomStatus] = {}
         self._current_room: tuple[int, int] = (0, 0)
+        self._room_visit_count: dict[tuple[int, int], int] = defaultdict(int)
+        self._room_openings: dict[tuple[int, int], list[str]] = {}  # detected exits per room
 
         # -- goal position memory --
         self._goal_position: tuple[float, float] | None = None
@@ -330,6 +332,9 @@ class MissionController(Node):
         self._scan_start_time: float = 0.0
         self._scan_last_yaw: float = 0.0
         self._scan_total_rotation: float = 0.0
+
+        # -- one-time sign memory: signs already followed --
+        self._used_signs: list[dict] = []  # {x, y, direction, led_to_dead_end}
 
         # -- backtracking to unexplored rooms --
         self._backtrack_target: tuple[int, int] | None = None
@@ -414,6 +419,23 @@ class MissionController(Node):
         if not self._validate_sign_direction(direction):
             return
 
+        # Check if this sign was already used (one-time signs)
+        for entry in self._used_signs:
+            if (entry["direction"] == direction
+                    and math.hypot(self._x - entry["x"],
+                                   self._y - entry["y"]) < 1.5):
+                if entry.get("led_to_dead_end"):
+                    self.get_logger().warn(
+                        f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
+                        f" led to dead-end last time — SKIPPING")
+                    return
+                # Already followed this sign before but it wasn't a dead-end
+                # On backtrack, skip it (one-time use)
+                self.get_logger().info(
+                    f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
+                    f" already followed — skipping on backtrack")
+                return
+
         # Check if this sign location was previously flagged as misleading
         for entry in self._sign_log:
             if (entry["direction"] == direction
@@ -436,9 +458,18 @@ class MissionController(Node):
             "misleading": False,
         }
         self._sign_log.append(self._active_sign_entry)
+
+        # Record as used sign (one-time use)
+        self._used_signs.append({
+            "direction": direction,
+            "x": self._x,
+            "y": self._y,
+            "led_to_dead_end": False,
+        })
+
         self.get_logger().info(
             f"SIGN logged: {direction} at ({self._x:.1f},{self._y:.1f})"
-            f" [total signs: {len(self._sign_log)}]")
+            f" [used signs: {len(self._used_signs)}]")
 
         self._current_sign = direction
         self._transition(State.SIGN_FOLLOW)
@@ -481,6 +512,7 @@ class MissionController(Node):
         room = _pos_to_room(self._x, self._y)
         if room != self._current_room:
             self._current_room = room
+            self._room_visit_count[room] += 1
             if room not in self._room_status:
                 self._room_status[room] = RoomStatus.ENTERED
 
@@ -607,6 +639,24 @@ class MissionController(Node):
                 self._backtrack_target = None
                 self._backtrack_pos = None
             else:
+                self._do_backtrack_drive()
+                return
+
+        # Room visit cap: if room scanned and visited 2+ times, backtrack
+        room = _pos_to_room(self._x, self._y)
+        room_visits = self._room_visit_count.get(room, 0)
+        room_scanned = self._room_status.get(room) == RoomStatus.SCANNED
+        if room_scanned and room_visits >= 2:
+            target = self._find_nearest_unexplored()
+            if target is not None:
+                cx, cy = target
+                self._backtrack_target = target
+                self._backtrack_pos = (
+                    cx * ROOM_SIZE + ROOM_SIZE / 2,
+                    cy * ROOM_SIZE + ROOM_SIZE / 2)
+                self.get_logger().info(
+                    f"Room {room} visited {room_visits}x (scanned) — "
+                    f"backtracking to unexplored room {target}")
                 self._do_backtrack_drive()
                 return
 
@@ -740,16 +790,39 @@ class MissionController(Node):
         self._publish_vel(0.0, MAX_ANGULAR * 0.6)
 
     def _finish_room_scan(self) -> None:
-        """Mark room as scanned."""
+        """Mark room as scanned and detect openings."""
         room = _pos_to_room(self._x, self._y)
         self._scanning = False
         if self._room_status.get(room) in (RoomStatus.ENTERED, None):
             self._room_status[room] = RoomStatus.SCANNED
+
+        # Detect openings from LiDAR (which directions have open corridors)
+        r = self._regions
+        openings = []
+        if r.front > WALL_FAR:
+            openings.append("front")
+        if r.left > WALL_FAR:
+            openings.append("left")
+        if r.right > WALL_FAR:
+            openings.append("right")
+        if r.fright > WALL_FAR:
+            openings.append("fright")
+        if r.fleft > WALL_FAR:
+            openings.append("fleft")
+        self._room_openings[room] = openings
+
+        scanned_count = len(
+            [s for s in self._room_status.values() if s == RoomStatus.SCANNED])
         self.get_logger().info(
             f"ROOM SCAN complete: room {room} -> "
             f"{self._room_status.get(room, RoomStatus.UNKNOWN).name} "
-            f"[{len([s for s in self._room_status.values() if s == RoomStatus.SCANNED])}"
-            f"/{MAZE_COLS * MAZE_ROWS} rooms scanned]")
+            f"openings={openings} "
+            f"[{scanned_count}/{MAZE_COLS * MAZE_ROWS} rooms scanned]")
+
+    def _mark_last_used_sign_dead_end(self) -> None:
+        """Mark the most recently used sign as leading to a dead-end."""
+        if self._used_signs:
+            self._used_signs[-1]["led_to_dead_end"] = True
 
     # ------------------------------------------------------------------
     #  Frontier backtracking
@@ -860,10 +933,12 @@ class MissionController(Node):
         # Wall ahead — stop driving
         if self._regions.front < 0.4:
             if self._active_sign_entry is not None and elapsed < 1.0:
-                # Hit wall immediately — misleading sign
+                # Hit wall immediately — misleading sign / dead-end
                 self._active_sign_entry["misleading"] = True
+                # Mark in used_signs as dead-end so it's never followed again
+                self._mark_last_used_sign_dead_end()
                 self.get_logger().warn(
-                    f"MISLEADING sign detected: "
+                    f"DEAD-END sign detected: "
                     f"{self._active_sign_entry['direction']} at "
                     f"({self._active_sign_entry['x']:.1f},"
                     f"{self._active_sign_entry['y']:.1f}) - BACKTRACKING")

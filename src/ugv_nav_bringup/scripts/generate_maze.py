@@ -363,54 +363,54 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Path: (0,0)>(1,0)>(1,1)>(2,1)>(2,2)>(3,2)>(4,2)>(4,1)>(5,1)>(5,0) -->
     <!-- ============================================================== -->
 
-    <!-- Direction signs: solid color panels at camera height (z=0.10) -->
-    <!-- Colors match HSV detector: FORWARD=cyan, RIGHT=blue, LEFT=green -->
-    <!-- STOP=red, GOAL=orange, INPLACE_ROTATION=purple -->
+    <!-- Direction signs: solid color panels at camera height (z=0.10)     -->
+    <!-- Signs placed near corridor WALLS (offset 0.3m) so bot can pass   -->
+    <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
 
-    <!-- 1. FORWARD at start zone — robot approaches from south -->
-{sign_model("sign_fwd_start", 1.0, 1.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 1. FORWARD at start zone — offset to left wall side -->
+{sign_model("sign_fwd_start", 0.3, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 2. FORWARD east along row 0 — robot approaches from west -->
-{sign_model("sign_fwd_east", 1.5, 1.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 2. FORWARD east along row 0 — offset to bottom wall -->
+{sign_model("sign_fwd_east", 1.5, 0.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 3. FORWARD north in cell(1,0) — robot approaches from south -->
-{sign_model("sign_fwd_10", 3.0, 1.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 3. FORWARD north in cell(1,0) — offset to left wall -->
+{sign_model("sign_fwd_10", 2.3, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 4. FORWARD north in cell(1,1) — robot approaches from south -->
-{sign_model("sign_fwd_11", 3.0, 3.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 4. FORWARD north in cell(1,1) — offset to left wall -->
+{sign_model("sign_fwd_11", 2.3, 3.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 5. RIGHT at cell(1,1) junction — robot approaches from west -->
-{sign_model("sign_right_11", 3.5, 3.0, 0, 0, 0.8, facing="west")}
+    <!-- 5. RIGHT at cell(1,1) junction — offset to bottom wall -->
+{sign_model("sign_right_11", 3.5, 2.3, 0, 0, 0.8, facing="west")}
 
-    <!-- 6. FORWARD north in cell(2,1) — robot approaches from south -->
-{sign_model("sign_fwd_21", 5.0, 3.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 6. FORWARD north in cell(2,1) — offset to left wall -->
+{sign_model("sign_fwd_21", 4.3, 3.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 7. FORWARD east in cell(2,2) — robot approaches from west -->
-{sign_model("sign_fwd_22", 5.0, 5.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 7. FORWARD east in cell(2,2) — offset to bottom wall -->
+{sign_model("sign_fwd_22", 5.0, 4.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 8. RIGHT at cell(3,2) — robot approaches from west -->
-{sign_model("sign_right_32", 7.5, 5.0, 0, 0, 0.8, facing="west")}
+    <!-- 8. RIGHT at cell(3,2) — offset to bottom wall -->
+{sign_model("sign_right_32", 7.5, 4.3, 0, 0, 0.8, facing="west")}
 
-    <!-- 9. FORWARD in cell(4,2) — robot approaches from west -->
-{sign_model("sign_fwd_42", 9.0, 5.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 9. FORWARD in cell(4,2) — offset to bottom wall -->
+{sign_model("sign_fwd_42", 9.0, 4.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 10. RIGHT at cell(4,1) — robot approaches from north -->
-{sign_model("sign_right_41", 9.0, 3.5, 0, 0, 0.8, facing="north")}
+    <!-- 10. RIGHT at cell(4,1) — offset to right wall -->
+{sign_model("sign_right_41", 9.7, 3.5, 0, 0, 0.8, facing="north")}
 
-    <!-- 11. FORWARD toward goal in cell(5,1) — robot approaches from west -->
-{sign_model("sign_fwd_51", 11.0, 3.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 11. FORWARD toward goal in cell(5,1) — offset to bottom wall -->
+{sign_model("sign_fwd_51", 11.0, 2.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 12. GOAL sign at cell(5,0) — robot approaches from north -->
-{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0, facing="north")}
+    <!-- 12. GOAL sign at cell(5,0) — offset to right wall -->
+{sign_model("sign_goal", 11.7, 1.5, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 13. MISLEADING LEFT at (0,2) junction — robot approaches from south -->
-{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0, facing="south")}
+    <!-- 13. MISLEADING LEFT at (0,2) — offset to left wall -->
+{sign_model("sign_left_misleading", 0.3, 5.0, 0, 0.8, 0, facing="south")}
 
-    <!-- 14. STOP near false goal — robot approaches from west -->
-{sign_model("sign_stop", 9.0, 7.0, 0.8, 0, 0, facing="west")}
+    <!-- 14. STOP near false goal — offset to bottom wall -->
+{sign_model("sign_stop", 9.0, 6.3, 0.8, 0, 0, facing="west")}
 
-    <!-- 15. INPLACE_ROTATION in upper corridor — robot approaches from west -->
-{sign_model("sign_inplace_rotation", 5.0, 9.0, 0.6, 0, 0.6, facing="west")}
+    <!-- 15. INPLACE_ROTATION in upper corridor — offset to bottom wall -->
+{sign_model("sign_inplace_rotation", 5.0, 8.3, 0.6, 0, 0.6, facing="west")}
 
     <!-- Static obstacles -->
     <model name="obs1"><static>true</static>

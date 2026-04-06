@@ -354,13 +354,13 @@
     <!-- Path: (0,0)>(1,0)>(1,1)>(2,1)>(2,2)>(3,2)>(4,2)>(4,1)>(5,1)>(5,0) -->
     <!-- ============================================================== -->
 
-    <!-- Direction signs: solid color panels at camera height (z=0.10) -->
-    <!-- Colors match HSV detector: FORWARD=cyan, RIGHT=blue, LEFT=green -->
-    <!-- STOP=red, GOAL=orange, INPLACE_ROTATION=purple -->
+    <!-- Direction signs: solid color panels at camera height (z=0.10)     -->
+    <!-- Signs placed near corridor WALLS (offset 0.3m) so bot can pass   -->
+    <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
 
-    <!-- 1. FORWARD at start zone — robot approaches from south -->
+    <!-- 1. FORWARD at start zone — offset to left wall side -->
     <model name="sign_fwd_start"><static>true</static>
-      <pose>1.0 1.5 0 0 0 0</pose>
+      <pose>0.3 1.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -375,9 +375,9 @@
       </link>
     </model>
 
-    <!-- 2. FORWARD east along row 0 — robot approaches from west -->
+    <!-- 2. FORWARD east along row 0 — offset to bottom wall -->
     <model name="sign_fwd_east"><static>true</static>
-      <pose>1.5 1.0 0 0 0 0</pose>
+      <pose>1.5 0.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -392,9 +392,9 @@
       </link>
     </model>
 
-    <!-- 3. FORWARD north in cell(1,0) — robot approaches from south -->
+    <!-- 3. FORWARD north in cell(1,0) — offset to left wall -->
     <model name="sign_fwd_10"><static>true</static>
-      <pose>3.0 1.5 0 0 0 0</pose>
+      <pose>2.3 1.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -409,9 +409,9 @@
       </link>
     </model>
 
-    <!-- 4. FORWARD north in cell(1,1) — robot approaches from south -->
+    <!-- 4. FORWARD north in cell(1,1) — offset to left wall -->
     <model name="sign_fwd_11"><static>true</static>
-      <pose>3.0 3.5 0 0 0 0</pose>
+      <pose>2.3 3.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -426,9 +426,9 @@
       </link>
     </model>
 
-    <!-- 5. RIGHT at cell(1,1) junction — robot approaches from west -->
+    <!-- 5. RIGHT at cell(1,1) junction — offset to bottom wall -->
     <model name="sign_right_11"><static>true</static>
-      <pose>3.5 3.0 0 0 0 0</pose>
+      <pose>3.5 2.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -443,9 +443,9 @@
       </link>
     </model>
 
-    <!-- 6. FORWARD north in cell(2,1) — robot approaches from south -->
+    <!-- 6. FORWARD north in cell(2,1) — offset to left wall -->
     <model name="sign_fwd_21"><static>true</static>
-      <pose>5.0 3.5 0 0 0 0</pose>
+      <pose>4.3 3.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -460,9 +460,9 @@
       </link>
     </model>
 
-    <!-- 7. FORWARD east in cell(2,2) — robot approaches from west -->
+    <!-- 7. FORWARD east in cell(2,2) — offset to bottom wall -->
     <model name="sign_fwd_22"><static>true</static>
-      <pose>5.0 5.0 0 0 0 0</pose>
+      <pose>5.0 4.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -477,9 +477,9 @@
       </link>
     </model>
 
-    <!-- 8. RIGHT at cell(3,2) — robot approaches from west -->
+    <!-- 8. RIGHT at cell(3,2) — offset to bottom wall -->
     <model name="sign_right_32"><static>true</static>
-      <pose>7.5 5.0 0 0 0 0</pose>
+      <pose>7.5 4.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -494,9 +494,9 @@
       </link>
     </model>
 
-    <!-- 9. FORWARD in cell(4,2) — robot approaches from west -->
+    <!-- 9. FORWARD in cell(4,2) — offset to bottom wall -->
     <model name="sign_fwd_42"><static>true</static>
-      <pose>9.0 5.0 0 0 0 0</pose>
+      <pose>9.0 4.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -511,9 +511,9 @@
       </link>
     </model>
 
-    <!-- 10. RIGHT at cell(4,1) — robot approaches from north -->
+    <!-- 10. RIGHT at cell(4,1) — offset to right wall -->
     <model name="sign_right_41"><static>true</static>
-      <pose>9.0 3.5 0 0 0 0</pose>
+      <pose>9.7 3.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -528,9 +528,9 @@
       </link>
     </model>
 
-    <!-- 11. FORWARD toward goal in cell(5,1) — robot approaches from west -->
+    <!-- 11. FORWARD toward goal in cell(5,1) — offset to bottom wall -->
     <model name="sign_fwd_51"><static>true</static>
-      <pose>11.0 3.0 0 0 0 0</pose>
+      <pose>11.0 2.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -545,9 +545,9 @@
       </link>
     </model>
 
-    <!-- 12. GOAL sign at cell(5,0) — robot approaches from north -->
+    <!-- 12. GOAL sign at cell(5,0) — offset to right wall -->
     <model name="sign_goal"><static>true</static>
-      <pose>11.0 1.5 0 0 0 0</pose>
+      <pose>11.7 1.5 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -562,9 +562,9 @@
       </link>
     </model>
 
-    <!-- 13. MISLEADING LEFT at (0,2) junction — robot approaches from south -->
+    <!-- 13. MISLEADING LEFT at (0,2) — offset to left wall -->
     <model name="sign_left_misleading"><static>true</static>
-      <pose>1.0 5.0 0 0 0 0</pose>
+      <pose>0.3 5.0 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -579,9 +579,9 @@
       </link>
     </model>
 
-    <!-- 14. STOP near false goal — robot approaches from west -->
+    <!-- 14. STOP near false goal — offset to bottom wall -->
     <model name="sign_stop"><static>true</static>
-      <pose>9.0 7.0 0 0 0 0</pose>
+      <pose>9.0 6.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
@@ -596,9 +596,9 @@
       </link>
     </model>
 
-    <!-- 15. INPLACE_ROTATION in upper corridor — robot approaches from west -->
+    <!-- 15. INPLACE_ROTATION in upper corridor — offset to bottom wall -->
     <model name="sign_inplace_rotation"><static>true</static>
-      <pose>5.0 9.0 0 0 0 0</pose>
+      <pose>5.0 8.3 0 0 0 0</pose>
       <link name="post">
         <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
           <pose>0 0 0.06 0 0 0</pose>
