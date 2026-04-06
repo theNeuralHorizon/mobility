@@ -346,6 +346,7 @@ class MissionController(Node):
         self._pre_sign_y: float = 0.0
         self._pre_sign_yaw: float = 0.0
         self._active_sign_entry: dict | None = None
+        self._last_sign_follow_time: float = 0.0  # cooldown between sign follows
 
         # -- ROS 2 interfaces --
         self.create_subscription(
@@ -401,6 +402,10 @@ class MissionController(Node):
                            State.SIGN_FOLLOW):
             return
 
+        # 10s cooldown between following any sign (prevents sign-loop)
+        if time.monotonic() - self._last_sign_follow_time < 10.0:
+            return
+
         direction = msg.data
 
         if direction == "GOAL":
@@ -420,20 +425,19 @@ class MissionController(Node):
             return
 
         # Check if this sign was already used (one-time signs)
+        # Use 3.0m radius (full room) so sign is recognized from any approach angle
         for entry in self._used_signs:
             if (entry["direction"] == direction
                     and math.hypot(self._x - entry["x"],
-                                   self._y - entry["y"]) < 1.5):
+                                   self._y - entry["y"]) < 3.0):
                 if entry.get("led_to_dead_end"):
                     self.get_logger().warn(
                         f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
                         f" led to dead-end last time — SKIPPING")
                     return
-                # Already followed this sign before but it wasn't a dead-end
-                # On backtrack, skip it (one-time use)
                 self.get_logger().info(
                     f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
-                    f" already followed — skipping on backtrack")
+                    f" already followed — skipping")
                 return
 
         # Check if this sign location was previously flagged as misleading
@@ -441,7 +445,7 @@ class MissionController(Node):
             if (entry["direction"] == direction
                     and entry["misleading"]
                     and math.hypot(self._x - entry["x"],
-                                   self._y - entry["y"]) < 1.5):
+                                   self._y - entry["y"]) < 3.0):
                 self.get_logger().warn(
                     f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
                     f" previously flagged MISLEADING - skipping")
@@ -472,6 +476,7 @@ class MissionController(Node):
             f" [used signs: {len(self._used_signs)}]")
 
         self._current_sign = direction
+        self._last_sign_follow_time = time.monotonic()
         self._transition(State.SIGN_FOLLOW)
 
     # ------------------------------------------------------------------
