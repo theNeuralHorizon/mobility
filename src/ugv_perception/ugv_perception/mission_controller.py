@@ -406,6 +406,8 @@ class MissionController(Node):
             Int32MultiArray, "/ugv/aruco/detections", self._aruco_cb, 10)
         self.create_subscription(
             String, "/ugv/sign/direction", self._sign_cb, 10)
+        self.create_subscription(
+            String, "/rotate_command", self._rotate_cmd_cb, 10)
 
         self._cmd_pub = self.create_publisher(Twist, "/cmd_vel", 10)
         self._state_pub = self.create_publisher(
@@ -536,6 +538,16 @@ class MissionController(Node):
         self._current_sign = direction
         self._last_sign_follow_time = time.monotonic()
         self._transition(State.SIGN_FOLLOW)
+
+    def _rotate_cmd_cb(self, msg: String) -> None:
+        """CLI command to trigger in-place 360° rotation."""
+        if self._state == State.MISSION_COMPLETE:
+            return
+        self._scanning = True
+        self._scan_start_time = time.monotonic()
+        self._scan_last_yaw = self._yaw
+        self._scan_total_rotation = 0.0
+        self.get_logger().info("Manual rotation triggered via /rotate_command")
 
     def _check_sign_absolute(self, direction: str) -> str | None:
         """Check if this is a re-encounter using absolute direction memory.

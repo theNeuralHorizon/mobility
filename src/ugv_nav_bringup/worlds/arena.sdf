@@ -359,326 +359,137 @@
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
     <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- 1. FORWARD — start toward aruco_0 (faces east so robot sees it from spawn) -->
+    <!-- All signs flush on walls — no posts, no collision, no crashes -->
+    <!-- Offset = wall_coord ± 0.08 (WALL_THICK/2 + 0.005)           -->
+
+    <!-- 1. FORWARD — on left boundary wall (x=0), cell(0,0) -->
     <model name="sign_forward_1"><static>true</static>
-      <pose>0.3 1.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 0.0000</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>0.08 1.5 0.10 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 2. FORWARD — return from dead end -->
+    <!-- 2. FORWARD return — on south face of wall at y=4, cell(0,1) -->
     <model name="sign_forward_2"><static>true</static>
-      <pose>0.3 2.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 1.5708</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>1.0 3.92 0.10 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 3. RIGHT — head east after return -->
+    <!-- 3. RIGHT east — on south boundary wall (y=0), cell(0,0) -->
     <model name="sign_right_1"><static>true</static>
-      <pose>1.5 0.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 -1.5708</pose>
-          <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>1.5 0.08 0.10 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 4. FORWARD — toward cell(1,1) -->
+    <!-- 4. FORWARD north — on south face of wall at y=2, cell(1,0) -->
     <model name="sign_forward_3"><static>true</static>
-      <pose>2.3 1.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 -1.5708</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>3.0 1.92 0.10 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 5. RIGHT — toward aruco_1 -->
+    <!-- 5. RIGHT east — on west face of wall at x=4, cell(1,1) -->
     <model name="sign_right_2"><static>true</static>
-      <pose>3.5 2.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>3.92 3.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 6. FORWARD — toward cell(2,2) -->
+    <!-- 6. FORWARD north — on south face of wall at y=4, cell(2,1) -->
     <model name="sign_forward_4"><static>true</static>
-      <pose>4.3 3.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 -1.5708</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>5.0 3.92 0.10 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 7. FORWARD — toward cell(3,2) -->
+    <!-- 7. FORWARD east — on west face of wall at x=6, cell(2,2) -->
     <model name="sign_forward_5"><static>true</static>
-      <pose>5.0 4.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>5.92 5.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 8. FORWARD — toward aruco_3 -->
+    <!-- 8. FORWARD east — on west face of wall at x=8 area, cell(3,2) -->
     <model name="sign_forward_6"><static>true</static>
-      <pose>7.5 4.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>7.92 5.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 9. (removed — was blocking aruco_3 view) -->
+    <!-- 9. (removed — was blocking aruco_3) -->
 
-    <!-- 10. LEFT — detour to aruco_2 -->
+    <!-- 10. LEFT west — on south face of wall at y=4, cell(4,1) -->
     <model name="sign_left_1"><static>true</static>
-      <pose>8.5 3.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 1.5708</pose>
-          <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>9.0 3.92 0.10 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 11. FORWARD — return from aruco_2 dead end -->
+    <!-- 11. FORWARD east — on west face of wall at x=8, cell(3,1) -->
     <model name="sign_forward_7"><static>true</static>
-      <pose>7.5 2.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>7.92 3.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 12. RIGHT — toward goal -->
+    <!-- 12. RIGHT east — on south face of wall at y=4, cell(4,1) -->
     <model name="sign_right_3"><static>true</static>
-      <pose>9.7 3.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 1.5708</pose>
-          <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>10.0 3.92 0.10 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 13. FORWARD — toward goal zone -->
+    <!-- 13. FORWARD south — on east boundary wall (x=12), cell(5,1) -->
     <model name="sign_forward_8"><static>true</static>
-      <pose>11.0 2.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>11.92 3.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 14. GOAL — mission complete -->
+    <!-- 14. GOAL — on south boundary wall (y=0), cell(5,0) -->
     <model name="sign_goal"><static>true</static>
-      <pose>11.7 1.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 1.5708</pose>
-          <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>11.0 0.08 0.10 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0.9 0.5 0 1</ambient><diffuse>0.9 0.5 0 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 15. LEFT — misleading trap -->
+    <!-- 15. LEFT misleading — on north face of wall at y=4, cell(0,2) -->
     <model name="sign_left_misleading"><static>true</static>
-      <pose>0.3 5.0 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 -1.5708</pose>
-          <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>1.0 4.08 0.10 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 16. STOP near false goal -->
+    <!-- 16. STOP — on west face of wall at x=10, near false goal -->
     <model name="sign_stop"><static>true</static>
-      <pose>9.0 6.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>9.92 7.0 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material>
+      </visual></link>
     </model>
 
-    <!-- 17. INPLACE_ROTATION in upper corridor -->
+    <!-- 17. INPLACE_ROTATION — on south face of wall at y=8, upper corridor -->
     <model name="sign_inplace_rotation"><static>true</static>
-      <pose>5.0 8.3 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0.6 0 0.6 1</ambient><diffuse>0.6 0 0.6 1</diffuse></material>
-        </visual>
-      </link>
+      <pose>5.0 7.92 0.10 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
+        <material><ambient>0.6 0 0.6 1</ambient><diffuse>0.6 0 0.6 1</diffuse></material>
+      </visual></link>
     </model>
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->

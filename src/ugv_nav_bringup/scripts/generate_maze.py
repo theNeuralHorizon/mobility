@@ -148,48 +148,28 @@ def sign_model(
     r: float, g: float, b: float,
     facing: str = "south",
 ) -> str:
-    """Colored sign panel at robot camera height, facing the approaching robot.
+    """Colored sign panel flush on wall surface — no post, no collision.
 
-    The sign is a vertical colored panel (0.20 wide x 0.01 thin x 0.15 tall)
-    at z=0.08 (robot camera center height). No textures — the HSV color
-    detector works on solid color.  A thin dark post holds it up.
+    Same approach as aruco_model: thin box (0.25 wide x 0.01 thin x 0.20 tall)
+    at z=0.10 (camera height). Robot cannot collide with it.
 
     facing: direction the colored face points toward
-      - "south": robot approaches from south (+Y to -Y), sign faces -Y
-      - "north": robot approaches from north, sign faces +Y
-      - "east":  robot approaches from west, sign faces +X
-      - "west":  robot approaches from east, sign faces -X
     """
     yaw = {
-        "north": 1.5708,
-        "south": -1.5708,
-        "east":  0.0,
-        "west":  3.14159,
-    }.get(facing, -1.5708)
+        "north": 0.0,
+        "south": 3.14159,
+        "east":  1.5708,
+        "west": -1.5708,
+    }.get(facing, 0.0)
 
     return (
         f'    <model name="{name}"><static>true</static>\n'
-        f'      <pose>{x} {y} 0 0 0 0</pose>\n'
-        f'      <link name="post">\n'
-        f'        <collision name="post_col"><geometry><cylinder>'
-        f'<radius>0.03</radius><length>0.20</length></cylinder></geometry>\n'
-        f'          <pose>0 0 0.10 0 0 0</pose>\n'
-        f'        </collision>\n'
-        f'        <visual name="post"><geometry><cylinder>'
-        f'<radius>0.01</radius><length>0.12</length></cylinder></geometry>\n'
-        f'          <pose>0 0 0.06 0 0 0</pose>\n'
-        f'          <material><ambient>0.2 0.2 0.2 1</ambient>'
-        f'<diffuse>0.2 0.2 0.2 1</diffuse></material>\n'
-        f'        </visual>\n'
-        f'      </link>\n'
-        f'      <link name="sign">\n'
-        f'        <visual name="face"><geometry><box>'
-        f'<size>0.20 0.01 0.15</size></box></geometry>\n'
-        f'          <pose>0 0 0.10 0 0 {yaw:.4f}</pose>\n'
-        f'          <material><ambient>{r} {g} {b} 1</ambient>'
+        f'      <pose>{x} {y} 0.10 0 0 {yaw:.4f}</pose>\n'
+        f'      <link name="l"><visual name="v"><geometry><box>'
+        f'<size>0.25 0.01 0.20</size></box></geometry>\n'
+        f'        <material><ambient>{r} {g} {b} 1</ambient>'
         f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
-        f'        </visual>\n'
-        f'      </link>\n'
+        f'      </visual></link>\n'
         f'    </model>'
     )
 
@@ -372,55 +352,58 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
     <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- 1. FORWARD — start toward aruco_0 (faces east so robot sees it from spawn) -->
-{sign_model("sign_forward_1", 0.3, 1.5, 0, 0.8, 0.8, facing="east")}
+    <!-- All signs flush on walls — no posts, no collision, no crashes -->
+    <!-- Offset = wall_coord ± 0.08 (WALL_THICK/2 + 0.005)           -->
 
-    <!-- 2. FORWARD — return from dead end -->
-{sign_model("sign_forward_2", 0.3, 2.5, 0, 0.8, 0.8, facing="north")}
+    <!-- 1. FORWARD — on left boundary wall (x=0), cell(0,0) -->
+{sign_model("sign_forward_1", 0.08, 1.5, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 3. RIGHT — head east after return -->
-{sign_model("sign_right_1", 1.5, 0.3, 0, 0, 0.8, facing="south")}
+    <!-- 2. FORWARD return — on south face of wall at y=4, cell(0,1) -->
+{sign_model("sign_forward_2", 1.0, 3.92, 0, 0.8, 0.8, facing="north")}
 
-    <!-- 4. FORWARD — toward cell(1,1) -->
-{sign_model("sign_forward_3", 2.3, 1.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 3. RIGHT east — on south boundary wall (y=0), cell(0,0) -->
+{sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="south")}
 
-    <!-- 5. RIGHT — toward aruco_1 -->
-{sign_model("sign_right_2", 3.5, 2.3, 0, 0, 0.8, facing="west")}
+    <!-- 4. FORWARD north — on south face of wall at y=2, cell(1,0) -->
+{sign_model("sign_forward_3", 3.0, 1.92, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 6. FORWARD — toward cell(2,2) -->
-{sign_model("sign_forward_4", 4.3, 3.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 5. RIGHT east — on west face of wall at x=4, cell(1,1) -->
+{sign_model("sign_right_2", 3.92, 3.0, 0, 0, 0.8, facing="west")}
 
-    <!-- 7. FORWARD — toward cell(3,2) -->
-{sign_model("sign_forward_5", 5.0, 4.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 6. FORWARD north — on south face of wall at y=4, cell(2,1) -->
+{sign_model("sign_forward_4", 5.0, 3.92, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 8. FORWARD — toward aruco_3 -->
-{sign_model("sign_forward_6", 7.5, 4.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 7. FORWARD east — on west face of wall at x=6, cell(2,2) -->
+{sign_model("sign_forward_5", 5.92, 5.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 9. (removed — was blocking aruco_3 view) -->
+    <!-- 8. FORWARD east — on west face of wall at x=8 area, cell(3,2) -->
+{sign_model("sign_forward_6", 7.92, 5.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 10. LEFT — detour to aruco_2 -->
-{sign_model("sign_left_1", 8.5, 3.5, 0, 0.8, 0, facing="north")}
+    <!-- 9. (removed — was blocking aruco_3) -->
 
-    <!-- 11. FORWARD — return from aruco_2 dead end -->
-{sign_model("sign_forward_7", 7.5, 2.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 10. LEFT west — on south face of wall at y=4, cell(4,1) -->
+{sign_model("sign_left_1", 9.0, 3.92, 0, 0.8, 0, facing="north")}
 
-    <!-- 12. RIGHT — toward goal -->
-{sign_model("sign_right_3", 9.7, 3.5, 0, 0, 0.8, facing="north")}
+    <!-- 11. FORWARD east — on west face of wall at x=8, cell(3,1) -->
+{sign_model("sign_forward_7", 7.92, 3.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 13. FORWARD — toward goal zone -->
-{sign_model("sign_forward_8", 11.0, 2.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 12. RIGHT east — on south face of wall at y=4, cell(4,1) -->
+{sign_model("sign_right_3", 10.0, 3.92, 0, 0, 0.8, facing="north")}
 
-    <!-- 14. GOAL — mission complete -->
-{sign_model("sign_goal", 11.7, 1.5, 0.9, 0.5, 0, facing="north")}
+    <!-- 13. FORWARD south — on east boundary wall (x=12), cell(5,1) -->
+{sign_model("sign_forward_8", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 15. LEFT — misleading trap -->
-{sign_model("sign_left_misleading", 0.3, 5.0, 0, 0.8, 0, facing="south")}
+    <!-- 14. GOAL — on south boundary wall (y=0), cell(5,0) -->
+{sign_model("sign_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 16. STOP near false goal -->
-{sign_model("sign_stop", 9.0, 6.3, 0.8, 0, 0, facing="west")}
+    <!-- 15. LEFT misleading — on north face of wall at y=4, cell(0,2) -->
+{sign_model("sign_left_misleading", 1.0, 4.08, 0, 0.8, 0, facing="south")}
 
-    <!-- 17. INPLACE_ROTATION in upper corridor -->
-{sign_model("sign_inplace_rotation", 5.0, 8.3, 0.6, 0, 0.6, facing="west")}
+    <!-- 16. STOP — on west face of wall at x=10, near false goal -->
+{sign_model("sign_stop", 9.92, 7.0, 0.8, 0, 0, facing="west")}
+
+    <!-- 17. INPLACE_ROTATION — on south face of wall at y=8, upper corridor -->
+{sign_model("sign_inplace_rotation", 5.0, 7.92, 0.6, 0, 0.6, facing="west")}
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>
