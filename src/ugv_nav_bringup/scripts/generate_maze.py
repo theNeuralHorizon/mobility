@@ -361,8 +361,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
 {sign_model("sign_forward_1", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 2. FORWARD return — wall at y=4 south face, walls_h[2][0]=T -->
-{sign_model("sign_forward_2", 1.0, 3.92, 0, 0.8, 0.8, facing="north")}
+    <!-- 2. FORWARD return — left boundary x=0, cell(0,1) (moved from y=4 wall to avoid aruco_0) -->
+{sign_model("sign_forward_2", 0.08, 3.0, 0, 0.8, 0.8, facing="east")}
 
     <!-- 3. RIGHT east — south boundary y=0 (always exists), cell(0,0) -->
 {sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="north")}
@@ -379,16 +379,16 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 7. FORWARD east — west wall x=4, walls_v[2][2]=T, cell(2,2) -->
 {sign_model("sign_forward_5", 4.08, 5.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 8. FORWARD east — south wall y=4, walls_h[2][3]=T, cell(3,2) -->
-{sign_model("sign_forward_6", 7.0, 4.08, 0, 0.8, 0.8, facing="north")}
+    <!-- 8. FORWARD east — east wall x=8 area, cell(3,2) (moved from y=4 wall to avoid aruco_2) -->
+{sign_model("sign_forward_6", 6.08, 5.0, 0, 0.8, 0.8, facing="east")}
 
     <!-- 9. (removed — was blocking aruco_3) -->
 
     <!-- 10. LEFT west — east wall x=10, walls_v[1][5]=F... use south wall y=2, walls_h[1][4]=T -->
 {sign_model("sign_left_1", 9.0, 2.08, 0, 0.8, 0, facing="north")}
 
-    <!-- 11. FORWARD east — west wall x=6, walls_v[1][3]=T, cell(3,1) -->
-{sign_model("sign_forward_7", 6.08, 3.0, 0, 0.8, 0.8, facing="east")}
+    <!-- 11. FORWARD east — south boundary y=0 area, cell(3,1) (moved from x=6 wall to avoid aruco_1) -->
+{sign_model("sign_forward_7", 7.0, 2.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- 12. RIGHT east — east wall x=10, walls_v[1][5]=F... use south boundary y=0 area -->
     <!-- Put on east wall x=10, walls_v[0][5]=F... use right boundary x=12 -->
@@ -400,8 +400,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0) -->
 {sign_model("sign_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 15. LEFT misleading — north face of wall at y=4, walls_h[2][0]=T -->
-{sign_model("sign_left_misleading", 1.0, 4.08, 0, 0.8, 0, facing="south")}
+    <!-- 15. LEFT misleading — left boundary x=0, cell(0,2) (moved from y=4 wall to avoid aruco_0) -->
+{sign_model("sign_left_misleading", 0.08, 5.0, 0, 0.8, 0, facing="east")}
 
     <!-- 16. STOP — south wall y=6, walls_h[3][4]=T, near false goal -->
 {sign_model("sign_stop", 9.0, 6.08, 0.8, 0, 0, facing="north")}

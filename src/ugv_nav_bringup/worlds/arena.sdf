@@ -373,9 +373,9 @@
       </visual></link>
     </model>
 
-    <!-- 2. FORWARD return — wall at y=4 south face, walls_h[2][0]=T -->
+    <!-- 2. FORWARD return — left boundary x=0, cell(0,1) (moved from y=4 wall to avoid aruco_0) -->
     <model name="sign_forward_2"><static>true</static>
-      <pose>1.0 3.92 0.10 0 0 0.0000</pose>
+      <pose>0.08 3.0 0.10 0 0 1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
@@ -421,9 +421,9 @@
       </visual></link>
     </model>
 
-    <!-- 8. FORWARD east — south wall y=4, walls_h[2][3]=T, cell(3,2) -->
+    <!-- 8. FORWARD east — east wall x=8 area, cell(3,2) (moved from y=4 wall to avoid aruco_2) -->
     <model name="sign_forward_6"><static>true</static>
-      <pose>7.0 4.08 0.10 0 0 0.0000</pose>
+      <pose>6.08 5.0 0.10 0 0 1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
@@ -439,9 +439,9 @@
       </visual></link>
     </model>
 
-    <!-- 11. FORWARD east — west wall x=6, walls_v[1][3]=T, cell(3,1) -->
+    <!-- 11. FORWARD east — south boundary y=0 area, cell(3,1) (moved from x=6 wall to avoid aruco_1) -->
     <model name="sign_forward_7"><static>true</static>
-      <pose>6.08 3.0 0.10 0 0 1.5708</pose>
+      <pose>7.0 2.08 0.10 0 0 0.0000</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
@@ -472,9 +472,9 @@
       </visual></link>
     </model>
 
-    <!-- 15. LEFT misleading — north face of wall at y=4, walls_h[2][0]=T -->
+    <!-- 15. LEFT misleading — left boundary x=0, cell(0,2) (moved from y=4 wall to avoid aruco_0) -->
     <model name="sign_left_misleading"><static>true</static>
-      <pose>1.0 4.08 0.10 0 0 3.1416</pose>
+      <pose>0.08 5.0 0.10 0 0 1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
       </visual></link>
