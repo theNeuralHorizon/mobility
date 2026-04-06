@@ -372,8 +372,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
     <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- 1. FORWARD — start toward aruco_0 -->
-{sign_model("sign_forward_1", 0.3, 1.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 1. FORWARD — start toward aruco_0 (faces east so robot sees it from spawn) -->
+{sign_model("sign_forward_1", 0.3, 1.5, 0, 0.8, 0.8, facing="east")}
 
     <!-- 2. FORWARD — return from dead end -->
 {sign_model("sign_forward_2", 0.3, 2.5, 0, 0.8, 0.8, facing="north")}
