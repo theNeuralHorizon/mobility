@@ -519,29 +519,13 @@
       </link>
     </model>
 
-    <!-- 9. RIGHT south at cell(4,2) after seeing aruco_3 -->
-    <model name="sign_right_42"><static>true</static>
-      <pose>9.7 4.5 0 0 0 0</pose>
-      <link name="post">
-        <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
-          <pose>0 0 0.10 0 0 0</pose>
-        </collision>
-        <visual name="post"><geometry><cylinder><radius>0.01</radius><length>0.12</length></cylinder></geometry>
-          <pose>0 0 0.06 0 0 0</pose>
-          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
-        </visual>
-      </link>
-      <link name="sign">
-        <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 3.1416</pose>
-          <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
-        </visual>
-      </link>
-    </model>
+    <!-- 9. (removed — sign_right_42 was blocking aruco_3 view) -->
+    <!-- Wall-following takes robot south from (4,2) to (4,1) naturally -->
 
     <!-- 10. LEFT west at cell(4,1) — detour to aruco_2 in (3,1) -->
+    <!-- Moved to north side of cell so robot sees it coming from (4,2) -->
     <model name="sign_left_41"><static>true</static>
-      <pose>8.5 2.3 0 0 0 0</pose>
+      <pose>8.5 3.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
           <pose>0 0 0.10 0 0 0</pose>
@@ -553,7 +537,7 @@
       </link>
       <link name="sign">
         <visual name="face"><geometry><box><size>0.20 0.01 0.15</size></box></geometry>
-          <pose>0 0 0.10 0 0 0.0000</pose>
+          <pose>0 0 0.10 0 0 1.5708</pose>
           <material><ambient>0 0.8 0 1</ambient><diffuse>0 0.8 0 1</diffuse></material>
         </visual>
       </link>

@@ -396,11 +396,12 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 8. FORWARD east in cell(3,2) toward aruco_3 in (4,2) -->
 {sign_model("sign_fwd_32", 7.5, 4.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 9. RIGHT south at cell(4,2) after seeing aruco_3 -->
-{sign_model("sign_right_42", 9.7, 4.5, 0, 0, 0.8, facing="west")}
+    <!-- 9. (removed — sign_right_42 was blocking aruco_3 view) -->
+    <!-- Wall-following takes robot south from (4,2) to (4,1) naturally -->
 
     <!-- 10. LEFT west at cell(4,1) — detour to aruco_2 in (3,1) -->
-{sign_model("sign_left_41", 8.5, 2.3, 0, 0.8, 0, facing="east")}
+    <!-- Moved to north side of cell so robot sees it coming from (4,2) -->
+{sign_model("sign_left_41", 8.5, 3.5, 0, 0.8, 0, facing="north")}
 
     <!-- 11. FORWARD east in cell(3,1) — return from aruco_2 dead end -->
 {sign_model("sign_fwd_31", 7.5, 2.3, 0, 0.8, 0.8, facing="west")}
