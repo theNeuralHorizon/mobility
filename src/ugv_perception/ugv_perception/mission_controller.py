@@ -597,15 +597,24 @@ class MissionController(Node):
         return False
 
     def _check_loop(self) -> bool:
-        """Return True (and enter RECOVERY) if a loop is detected."""
+        """Return True (and enter RECOVERY) if a loop is detected.
+
+        On loop detection, triggers a 360° room scan FIRST to look for
+        openings/markers before entering full recovery.
+        """
         if self._state != State.EXPLORING:
             return False
         now = time.monotonic()
-        # Suppress loop detection during post-recovery cooldown
         if now < self._loop_cooldown_until:
             return False
         elapsed = now - self._start_time
         if elapsed > LOOP_ACTIVATION_DELAY and self._detect_loop():
+            # Scan the area for markers/signs before recovery
+            if not self._scanning:
+                self.get_logger().warn(
+                    "Loop detected - scanning area before recovery")
+                self._start_room_scan()
+                return False  # let scan complete, recovery on next loop detect
             self.get_logger().warn("Loop detected - entering RECOVERY")
             self._transition(State.RECOVERY)
             return True
@@ -618,13 +627,7 @@ class MissionController(Node):
     def _do_exploring(self) -> None:
         now = time.monotonic()
 
-        # Room scan: rotate 360° on first entry to a new room
-        room = _pos_to_room(self._x, self._y)
-        if (not self._scanning
-                and self._room_status.get(room) == RoomStatus.ENTERED
-                and now >= self._post_recovery_until):
-            self._start_room_scan()
-
+        # Room scan: ONLY triggered by loop/recovery, not on room entry
         if self._scanning:
             self._do_room_scan()
             return
@@ -634,53 +637,18 @@ class MissionController(Node):
             self._do_gap_drive()
             return
 
-        # Backtracking: drive toward unexplored room
-        if self._backtrack_target is not None:
-            current_room = _pos_to_room(self._x, self._y)
-            if current_room == self._backtrack_target:
-                self.get_logger().info(
-                    f"Reached backtrack target room {self._backtrack_target}")
-                self._backtrack_target = None
-                self._backtrack_pos = None
-            else:
-                self._do_backtrack_drive()
-                return
-
-        # Room visit cap: if room scanned and visited 2+ times, backtrack
-        room = _pos_to_room(self._x, self._y)
-        room_visits = self._room_visit_count.get(room, 0)
-        room_scanned = self._room_status.get(room) == RoomStatus.SCANNED
-        if room_scanned and room_visits >= 2:
-            target = self._find_nearest_unexplored()
-            if target is not None:
-                cx, cy = target
-                self._backtrack_target = target
-                self._backtrack_pos = (
-                    cx * ROOM_SIZE + ROOM_SIZE / 2,
-                    cy * ROOM_SIZE + ROOM_SIZE / 2)
-                self.get_logger().info(
-                    f"Room {room} visited {room_visits}x (scanned) — "
-                    f"backtracking to unexplored room {target}")
-                self._do_backtrack_drive()
-                return
-
         cell = _pos_to_cell(self._x, self._y)
         visits = self._cell_visit_count.get(cell, 0)
 
-        # Override: when cell revisited too often, try backtracking first
+        # Override wall-follower when cell revisited too often
         if visits >= REVISIT_LIMIT:
-            target = self._find_nearest_unexplored()
-            if target is not None:
-                cx, cy = target
-                self._backtrack_target = target
-                self._backtrack_pos = (
-                    cx * ROOM_SIZE + ROOM_SIZE / 2,
-                    cy * ROOM_SIZE + ROOM_SIZE / 2)
-                self.get_logger().info(
-                    f"Backtracking to unexplored room {target}")
-                self._do_backtrack_drive()
-                return
             self._do_exploring_override()
+            return
+
+        # Normal wall-following with thin-obstacle avoidance
+        r = self._regions
+        if self._is_thin_obstacle(r):
+            self._do_dodge_obstacle()
             return
 
         linear, angular, new_error, new_integral = _wall_follow_cmd(
@@ -689,6 +657,22 @@ class MissionController(Node):
         self._prev_wall_error = new_error
         self._wall_integral_error = new_integral
         self._publish_vel(linear, angular)
+
+    def _is_thin_obstacle(self, r: LidarRegions) -> bool:
+        """Detect thin obstacles like sign posts (front blocked but sides open)."""
+        return (r.front < FRONT_STOP
+                and (r.fright > 0.6 or r.fleft > 0.6)
+                and r.front > FRONT_REVERSE)
+
+    def _do_dodge_obstacle(self) -> None:
+        """Steer around a thin obstacle (sign post) instead of turning away."""
+        r = self._regions
+        if r.fleft > r.fright:
+            # More space on left — dodge left
+            self._publish_vel(MAX_LINEAR * 0.3, 0.4)
+        else:
+            # More space on right — dodge right
+            self._publish_vel(MAX_LINEAR * 0.3, -0.4)
 
     def _do_gap_drive(self) -> None:
         """Drive toward the widest open direction (gap-seeking).
@@ -741,6 +725,11 @@ class MissionController(Node):
                 f"{old_side} -> {self._wall_follow_side}")
 
         r = self._regions
+
+        # Thin obstacle (sign post) — dodge around it
+        if self._is_thin_obstacle(r):
+            self._do_dodge_obstacle()
+            return
 
         if r.front < FRONT_STOP:
             turn = MAX_ANGULAR if self._wall_follow_side == "right" else -MAX_ANGULAR
@@ -896,7 +885,8 @@ class MissionController(Node):
             self._sign_target_yaw = _normalize_angle(self._yaw - math.pi / 2)
             self._sign_phase = "turning"
         elif sign == "FORWARD":
-            self._sign_phase = "driving"
+            # Sidestep first to avoid crashing into the sign post itself
+            self._sign_phase = "sidestepping"
             self._sign_drive_start = time.monotonic()
         elif sign == "STOP":
             self._sign_phase = "stopped"
@@ -909,7 +899,9 @@ class MissionController(Node):
     def _do_sign_follow(self) -> None:
         now = time.monotonic()
 
-        if self._sign_phase == "turning":
+        if self._sign_phase == "sidestepping":
+            self._do_sign_sidestep(now)
+        elif self._sign_phase == "turning":
             self._do_sign_turning(now)
         elif self._sign_phase == "driving":
             self._do_sign_driving(now)
@@ -919,6 +911,21 @@ class MissionController(Node):
             self._do_sign_spinning(now)
         elif self._sign_phase == "backtracking":
             self._do_sign_backtrack(now)
+
+    def _do_sign_sidestep(self, now: float) -> None:
+        """Briefly steer to the side to avoid the sign post, then drive forward."""
+        elapsed = now - self._sign_drive_start
+        r = self._regions
+        if elapsed < 0.8:
+            # Steer toward the side with more space
+            if r.fleft > r.fright:
+                self._publish_vel(MAX_LINEAR * 0.4, 0.5)
+            else:
+                self._publish_vel(MAX_LINEAR * 0.4, -0.5)
+        else:
+            # Done sidestepping, now drive forward
+            self._sign_phase = "driving"
+            self._sign_drive_start = now
 
     def _do_sign_turning(self, now: float) -> None:
         error = _normalize_angle(self._sign_target_yaw - self._yaw)
