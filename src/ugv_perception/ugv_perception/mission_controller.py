@@ -1187,24 +1187,28 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _do_goal_seek(self) -> None:
-        # Navigate to memorized goal position if available
+        """Navigate to goal after all markers collected.
+
+        Priority:
+        1. If goal position memorized → point-to-point navigation
+        2. If no goal memorized → follow signs (they lead to goal)
+        3. If stuck → Tremaux exploration to find the goal sign
+        """
+        # If goal position is memorized, navigate toward it
         if self._goal_position is not None:
             dx = self._goal_position[0] - self._x
             dy = self._goal_position[1] - self._y
             dist = math.hypot(dx, dy)
 
             if dist < 1.0:
-                # Close enough — clear memory and drive straight into goal
                 self.get_logger().info("Near memorized goal — driving forward")
                 self._goal_position = None
                 self._goal_room = None
             else:
-                # Point-to-point toward memorized goal
                 target_yaw = math.atan2(dy, dx)
                 yaw_error = _normalize_angle(target_yaw - self._yaw)
 
                 if self._regions.front < FRONT_STOP:
-                    # Wall blocks direct path — wall-follow around it
                     linear, angular, e, i = _wall_follow_cmd(
                         self._regions, self._prev_wall_error,
                         self._wall_integral_error, self._wall_follow_side)
@@ -1219,12 +1223,37 @@ class MissionController(Node):
                     self._publish_vel(MAX_LINEAR, angular)
                 return
 
-        # Original: drive forward until wall (goal directly ahead)
-        if self._regions.front < 0.3:
-            self.get_logger().info("MISSION COMPLETE - Goal zone reached!")
-            self._transition(State.MISSION_COMPLETE)
+        # No memorized goal — explore to find the GOAL sign
+        # Use wall-following + Tremaux at junctions to systematically search
+        # Signs are still processed (GOAL sign triggers MISSION_COMPLETE in _sign_cb)
+        r = self._regions
+
+        # Thin obstacle dodge
+        if self._is_thin_obstacle(r):
+            self._do_dodge_obstacle()
             return
-        self._publish_vel(MAX_LINEAR, 0.0)
+
+        # At a junction, use Tremaux to pick unexplored paths
+        now = time.monotonic()
+        if (now - self._last_junction_time > JUNCTION_COOLDOWN
+                and self._detect_junction()):
+            chosen = self._tremaux_choose()
+            if chosen is not None:
+                self._register_junction(chosen)
+                target = _cardinal_to_yaw(chosen)
+                error = _normalize_angle(target - self._yaw)
+                if abs(error) > 0.2:
+                    angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+                    self._publish_vel(0.0, angular)
+                    return
+
+        # Default: wall-follow to explore
+        linear, angular, new_error, new_integral = _wall_follow_cmd(
+            r, self._prev_wall_error,
+            self._wall_integral_error, self._wall_follow_side)
+        self._prev_wall_error = new_error
+        self._wall_integral_error = new_integral
+        self._publish_vel(linear, angular)
 
     # ------------------------------------------------------------------
     #  RECOVERY (escalating strategies)

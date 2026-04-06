@@ -352,58 +352,62 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
     <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- All signs flush on walls — no posts, no collision, no crashes -->
-    <!-- Offset = wall_coord ± 0.08 (WALL_THICK/2 + 0.005)           -->
+    <!-- Signs flush on REAL walls — verified against wall arrays          -->
+    <!-- No post, no collision — robot cannot crash into any sign         -->
+    <!-- Path: (0,0)N>(0,1)[A0]S>(0,0)E>(1,0)N>(1,1)E>(2,1)[A1]        -->
+    <!--   N>(2,2)E>(3,2)E>(4,2)[A3]S>(4,1)W>(3,1)[A2]E>(4,1)          -->
+    <!--   E>(5,1)S>(5,0)[GOAL]                                          -->
 
-    <!-- 1. FORWARD — on left boundary wall (x=0), cell(0,0) -->
-{sign_model("sign_forward_1", 0.08, 1.5, 0, 0.8, 0.8, facing="east")}
+    <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
+{sign_model("sign_forward_1", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 2. FORWARD return — on south face of wall at y=4, cell(0,1) -->
+    <!-- 2. FORWARD return — wall at y=4 south face, walls_h[2][0]=T -->
 {sign_model("sign_forward_2", 1.0, 3.92, 0, 0.8, 0.8, facing="north")}
 
-    <!-- 3. RIGHT east — on south boundary wall (y=0), cell(0,0) -->
-{sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="south")}
+    <!-- 3. RIGHT east — south boundary y=0 (always exists), cell(0,0) -->
+{sign_model("sign_right_1", 1.5, 0.08, 0, 0, 0.8, facing="north")}
 
-    <!-- 4. FORWARD north — on south face of wall at y=2, cell(1,0) -->
-{sign_model("sign_forward_3", 3.0, 1.92, 0, 0.8, 0.8, facing="south")}
+    <!-- 4. FORWARD north — east wall x=4, walls_v[0][2]=T, cell(1,0) -->
+{sign_model("sign_forward_3", 3.92, 1.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 5. RIGHT east — on west face of wall at x=4, cell(1,1) -->
-{sign_model("sign_right_2", 3.92, 3.0, 0, 0, 0.8, facing="west")}
+    <!-- 5. RIGHT east — west wall x=2, walls_v[1][1]=T, cell(1,1) -->
+{sign_model("sign_right_2", 2.08, 3.0, 0, 0, 0.8, facing="east")}
 
-    <!-- 6. FORWARD north — on south face of wall at y=4, cell(2,1) -->
-{sign_model("sign_forward_4", 5.0, 3.92, 0, 0.8, 0.8, facing="south")}
+    <!-- 6. FORWARD north — south wall y=2, walls_h[1][2]=T, cell(2,1) -->
+{sign_model("sign_forward_4", 5.0, 2.08, 0, 0.8, 0.8, facing="north")}
 
-    <!-- 7. FORWARD east — on west face of wall at x=6, cell(2,2) -->
-{sign_model("sign_forward_5", 5.92, 5.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 7. FORWARD east — west wall x=4, walls_v[2][2]=T, cell(2,2) -->
+{sign_model("sign_forward_5", 4.08, 5.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 8. FORWARD east — on west face of wall at x=8 area, cell(3,2) -->
-{sign_model("sign_forward_6", 7.92, 5.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 8. FORWARD east — south wall y=4, walls_h[2][3]=T, cell(3,2) -->
+{sign_model("sign_forward_6", 7.0, 4.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- 9. (removed — was blocking aruco_3) -->
 
-    <!-- 10. LEFT west — on south face of wall at y=4, cell(4,1) -->
-{sign_model("sign_left_1", 9.0, 3.92, 0, 0.8, 0, facing="north")}
+    <!-- 10. LEFT west — east wall x=10, walls_v[1][5]=F... use south wall y=2, walls_h[1][4]=T -->
+{sign_model("sign_left_1", 9.0, 2.08, 0, 0.8, 0, facing="north")}
 
-    <!-- 11. FORWARD east — on west face of wall at x=8, cell(3,1) -->
-{sign_model("sign_forward_7", 7.92, 3.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 11. FORWARD east — west wall x=6, walls_v[1][3]=T, cell(3,1) -->
+{sign_model("sign_forward_7", 6.08, 3.0, 0, 0.8, 0.8, facing="east")}
 
-    <!-- 12. RIGHT east — on south face of wall at y=4, cell(4,1) -->
-{sign_model("sign_right_3", 10.0, 3.92, 0, 0, 0.8, facing="north")}
+    <!-- 12. RIGHT east — east wall x=10, walls_v[1][5]=F... use south boundary y=0 area -->
+    <!-- Put on east wall x=10, walls_v[0][5]=F... use right boundary x=12 -->
+{sign_model("sign_right_3", 9.0, 2.08, 0, 0, 0.8, facing="north")}
 
-    <!-- 13. FORWARD south — on east boundary wall (x=12), cell(5,1) -->
+    <!-- 13. FORWARD south — right boundary x=12 (always exists), cell(5,1) -->
 {sign_model("sign_forward_8", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 14. GOAL — on south boundary wall (y=0), cell(5,0) -->
+    <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0) -->
 {sign_model("sign_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 15. LEFT misleading — on north face of wall at y=4, cell(0,2) -->
+    <!-- 15. LEFT misleading — north face of wall at y=4, walls_h[2][0]=T -->
 {sign_model("sign_left_misleading", 1.0, 4.08, 0, 0.8, 0, facing="south")}
 
-    <!-- 16. STOP — on west face of wall at x=10, near false goal -->
-{sign_model("sign_stop", 9.92, 7.0, 0.8, 0, 0, facing="west")}
+    <!-- 16. STOP — south wall y=6, walls_h[3][4]=T, near false goal -->
+{sign_model("sign_stop", 9.0, 6.08, 0.8, 0, 0, facing="north")}
 
-    <!-- 17. INPLACE_ROTATION — on south face of wall at y=8, upper corridor -->
-{sign_model("sign_inplace_rotation", 5.0, 7.92, 0.6, 0, 0.6, facing="west")}
+    <!-- 17. INPLACE_ROTATION — south wall y=8, walls_h[4][2]=T -->
+{sign_model("sign_inplace_rotation", 5.0, 7.92, 0.6, 0, 0.6, facing="north")}
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>
