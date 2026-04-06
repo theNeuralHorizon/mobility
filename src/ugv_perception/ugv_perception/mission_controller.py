@@ -65,6 +65,11 @@ LOOP_ACTIVATION_DELAY: Final[float] = 45.0   # was 30 — give time to explore f
 CELL_SIZE: Final[float] = 0.5
 REVISIT_LIMIT: Final[int] = 3            # was 2 — less aggressive override
 
+# Room-level map (matches maze 2m cells)
+ROOM_SIZE: Final[float] = 2.0
+MAZE_COLS: Final[int] = 6
+MAZE_ROWS: Final[int] = 5
+
 # Markers
 REQUIRED_MARKERS: Final[frozenset[int]] = frozenset({0, 1, 2, 3})
 
@@ -92,6 +97,14 @@ class State(Enum):
     GOAL_SEEK = auto()
     RECOVERY = auto()
     MISSION_COMPLETE = auto()
+
+
+class RoomStatus(Enum):
+    """Room exploration status for local map."""
+
+    UNKNOWN = auto()     # never entered
+    ENTERED = auto()     # entered, full scan not done yet
+    SCANNED = auto()     # 360° scan complete, nothing more to find
 
 
 @dataclass(frozen=True)
@@ -148,6 +161,13 @@ def _safe_min(values: list[float], default: float = SAFE_RANGE_MAX) -> float:
 def _pos_to_cell(x: float, y: float) -> tuple[int, int]:
     """Convert world position to a grid cell index."""
     return (int(math.floor(x / CELL_SIZE)), int(math.floor(y / CELL_SIZE)))
+
+
+def _pos_to_room(x: float, y: float) -> tuple[int, int]:
+    """Convert odom position to maze room (col, row), clamped to grid bounds."""
+    col = max(0, min(MAZE_COLS - 1, int(math.floor(x / ROOM_SIZE))))
+    row = max(0, min(MAZE_ROWS - 1, int(math.floor(y / ROOM_SIZE))))
+    return (col, row)
 
 
 def _regions_from_scan(ranges: list[float]) -> LidarRegions:
@@ -297,6 +317,24 @@ class MissionController(Node):
         self._sign_phase: str = "turning"
         self._sign_drive_start: float = 0.0
 
+        # -- room-level local map (2m grid matching maze) --
+        self._room_status: dict[tuple[int, int], RoomStatus] = {}
+        self._current_room: tuple[int, int] = (0, 0)
+
+        # -- goal position memory --
+        self._goal_position: tuple[float, float] | None = None
+        self._goal_room: tuple[int, int] | None = None
+
+        # -- room scanning sub-state (within EXPLORING) --
+        self._scanning: bool = False
+        self._scan_start_time: float = 0.0
+        self._scan_last_yaw: float = 0.0
+        self._scan_total_rotation: float = 0.0
+
+        # -- backtracking to unexplored rooms --
+        self._backtrack_target: tuple[int, int] | None = None
+        self._backtrack_pos: tuple[float, float] | None = None
+
         # -- sign logging & misleading detection --
         self._sign_log: list[dict] = []
         self._pre_sign_x: float = 0.0
@@ -337,6 +375,7 @@ class MissionController(Node):
         self._update_move_tracking()
         self._update_position_history()
         self._update_cell_tracking()
+        self._update_room_tracking()
 
     def _aruco_cb(self, msg: Int32MultiArray) -> None:
         for mid in msg.data:
@@ -347,6 +386,10 @@ class MissionController(Node):
                     f"({len(self._visited_markers)}/{len(REQUIRED_MARKERS)})")
                 if self._visited_markers >= REQUIRED_MARKERS:
                     self.get_logger().info("ALL 4 MARKERS COLLECTED!")
+                    if self._goal_position is not None:
+                        self.get_logger().info(
+                            f"Goal memorized at {self._goal_position} — seeking!")
+                        self._transition(State.GOAL_SEEK)
 
     def _sign_cb(self, msg: String) -> None:
         if self._state in (State.RECOVERY, State.MISSION_COMPLETE,
@@ -359,8 +402,13 @@ class MissionController(Node):
             if self._visited_markers >= REQUIRED_MARKERS:
                 self._transition(State.GOAL_SEEK)
             else:
+                # Remember goal position for later return
+                self._goal_position = (self._x, self._y)
+                self._goal_room = _pos_to_room(self._x, self._y)
                 self.get_logger().info(
-                    "GOAL sign seen but markers incomplete - ignoring")
+                    f"GOAL memorized at ({self._x:.1f},{self._y:.1f}) "
+                    f"room {self._goal_room} — markers "
+                    f"{len(self._visited_markers)}/{len(REQUIRED_MARKERS)}")
             return
 
         if not self._validate_sign_direction(direction):
@@ -427,6 +475,14 @@ class MissionController(Node):
             self._visited_cells.add(cell)
             self._cell_visit_count[cell] += 1
             self._last_cell = cell
+
+    def _update_room_tracking(self) -> None:
+        """Track room-level exploration status (2m grid)."""
+        room = _pos_to_room(self._x, self._y)
+        if room != self._current_room:
+            self._current_room = room
+            if room not in self._room_status:
+                self._room_status[room] = RoomStatus.ENTERED
 
     # ------------------------------------------------------------------
     #  Sign validation
@@ -526,16 +582,50 @@ class MissionController(Node):
     def _do_exploring(self) -> None:
         now = time.monotonic()
 
+        # Room scan: rotate 360° on first entry to a new room
+        room = _pos_to_room(self._x, self._y)
+        if (not self._scanning
+                and self._room_status.get(room) == RoomStatus.ENTERED
+                and now >= self._post_recovery_until):
+            self._start_room_scan()
+
+        if self._scanning:
+            self._do_room_scan()
+            return
+
         # Post-recovery escape: drive toward widest gap
         if now < self._post_recovery_until:
             self._do_gap_drive()
             return
 
+        # Backtracking: drive toward unexplored room
+        if self._backtrack_target is not None:
+            current_room = _pos_to_room(self._x, self._y)
+            if current_room == self._backtrack_target:
+                self.get_logger().info(
+                    f"Reached backtrack target room {self._backtrack_target}")
+                self._backtrack_target = None
+                self._backtrack_pos = None
+            else:
+                self._do_backtrack_drive()
+                return
+
         cell = _pos_to_cell(self._x, self._y)
         visits = self._cell_visit_count.get(cell, 0)
 
-        # Override wall-follower when cell is revisited too often
+        # Override: when cell revisited too often, try backtracking first
         if visits >= REVISIT_LIMIT:
+            target = self._find_nearest_unexplored()
+            if target is not None:
+                cx, cy = target
+                self._backtrack_target = target
+                self._backtrack_pos = (
+                    cx * ROOM_SIZE + ROOM_SIZE / 2,
+                    cy * ROOM_SIZE + ROOM_SIZE / 2)
+                self.get_logger().info(
+                    f"Backtracking to unexplored room {target}")
+                self._do_backtrack_drive()
+                return
             self._do_exploring_override()
             return
 
@@ -618,6 +708,103 @@ class MissionController(Node):
                 self._publish_vel(MAX_LINEAR, 0.0)
             else:
                 self._publish_vel(0.05, -MAX_ANGULAR * 0.7)
+
+    # ------------------------------------------------------------------
+    #  Room scanning (sub-state within EXPLORING)
+    # ------------------------------------------------------------------
+
+    def _start_room_scan(self) -> None:
+        """Begin in-place 360° scan of the current room."""
+        self._scanning = True
+        self._scan_start_time = time.monotonic()
+        self._scan_last_yaw = self._yaw
+        self._scan_total_rotation = 0.0
+        room = _pos_to_room(self._x, self._y)
+        self.get_logger().info(f"ROOM SCAN started at room {room}")
+
+    def _do_room_scan(self) -> None:
+        """Rotate in place, tracking cumulative rotation."""
+        now = time.monotonic()
+        elapsed = now - self._scan_start_time
+
+        # Track cumulative rotation via yaw deltas
+        yaw_delta = _normalize_angle(self._yaw - self._scan_last_yaw)
+        self._scan_total_rotation += abs(yaw_delta)
+        self._scan_last_yaw = self._yaw
+
+        # Done: ~330° rotated or 8s timeout
+        if self._scan_total_rotation >= 2.0 * math.pi * 0.9 or elapsed > 8.0:
+            self._finish_room_scan()
+            return
+
+        self._publish_vel(0.0, MAX_ANGULAR * 0.6)
+
+    def _finish_room_scan(self) -> None:
+        """Mark room as scanned."""
+        room = _pos_to_room(self._x, self._y)
+        self._scanning = False
+        if self._room_status.get(room) in (RoomStatus.ENTERED, None):
+            self._room_status[room] = RoomStatus.SCANNED
+        self.get_logger().info(
+            f"ROOM SCAN complete: room {room} -> "
+            f"{self._room_status.get(room, RoomStatus.UNKNOWN).name} "
+            f"[{len([s for s in self._room_status.values() if s == RoomStatus.SCANNED])}"
+            f"/{MAZE_COLS * MAZE_ROWS} rooms scanned]")
+
+    # ------------------------------------------------------------------
+    #  Frontier backtracking
+    # ------------------------------------------------------------------
+
+    def _find_nearest_unexplored(self) -> tuple[int, int] | None:
+        """BFS on room grid to find nearest UNKNOWN room."""
+        from collections import deque
+        current = _pos_to_room(self._x, self._y)
+        queue = deque([current])
+        visited = {current}
+
+        while queue:
+            room = queue.popleft()
+            col, row = room
+            if room != current and self._room_status.get(
+                    room, RoomStatus.UNKNOWN) == RoomStatus.UNKNOWN:
+                return room
+            for dc, dr in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                nc, nr = col + dc, row + dr
+                neighbor = (nc, nr)
+                if (0 <= nc < MAZE_COLS and 0 <= nr < MAZE_ROWS
+                        and neighbor not in visited):
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        return None
+
+    def _do_backtrack_drive(self) -> None:
+        """Point-to-point navigation toward backtrack target with wall-follow fallback."""
+        if self._backtrack_pos is None:
+            return
+
+        tx, ty = self._backtrack_pos
+        dx = tx - self._x
+        dy = ty - self._y
+        target_yaw = math.atan2(dy, dx)
+        yaw_error = _normalize_angle(target_yaw - self._yaw)
+
+        if self._regions.front < FRONT_STOP:
+            # Wall blocking — use wall following to navigate around
+            linear, angular, e, i = _wall_follow_cmd(
+                self._regions, self._prev_wall_error,
+                self._wall_integral_error, self._wall_follow_side)
+            self._prev_wall_error = e
+            self._wall_integral_error = i
+            self._publish_vel(linear, angular)
+        elif abs(yaw_error) > 0.4:
+            # Turn toward target
+            angular = _clamp(yaw_error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+            self._publish_vel(0.05, angular)
+        else:
+            # Drive toward target with heading correction
+            angular = _clamp(yaw_error * 0.8, -MAX_ANGULAR, MAX_ANGULAR)
+            speed = MAX_LINEAR if self._regions.front > FRONT_SLOW else MAX_LINEAR * 0.5
+            self._publish_vel(speed, angular)
 
     # ------------------------------------------------------------------
     #  SIGN_FOLLOW
@@ -745,6 +932,39 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _do_goal_seek(self) -> None:
+        # Navigate to memorized goal position if available
+        if self._goal_position is not None:
+            dx = self._goal_position[0] - self._x
+            dy = self._goal_position[1] - self._y
+            dist = math.hypot(dx, dy)
+
+            if dist < 1.0:
+                # Close enough — clear memory and drive straight into goal
+                self.get_logger().info("Near memorized goal — driving forward")
+                self._goal_position = None
+                self._goal_room = None
+            else:
+                # Point-to-point toward memorized goal
+                target_yaw = math.atan2(dy, dx)
+                yaw_error = _normalize_angle(target_yaw - self._yaw)
+
+                if self._regions.front < FRONT_STOP:
+                    # Wall blocks direct path — wall-follow around it
+                    linear, angular, e, i = _wall_follow_cmd(
+                        self._regions, self._prev_wall_error,
+                        self._wall_integral_error, self._wall_follow_side)
+                    self._prev_wall_error = e
+                    self._wall_integral_error = i
+                    self._publish_vel(linear, angular)
+                elif abs(yaw_error) > 0.3:
+                    angular = _clamp(yaw_error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
+                    self._publish_vel(0.0, angular)
+                else:
+                    angular = _clamp(yaw_error * 1.0, -MAX_ANGULAR, MAX_ANGULAR)
+                    self._publish_vel(MAX_LINEAR, angular)
+                return
+
+        # Original: drive forward until wall (goal directly ahead)
         if self._regions.front < 0.3:
             self.get_logger().info("MISSION COMPLETE - Goal zone reached!")
             self._transition(State.MISSION_COMPLETE)
@@ -756,6 +976,7 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _setup_recovery(self) -> None:
+        self._scanning = False  # cancel any active room scan
         self._recovery_start = time.monotonic()
         # Check if we're stuck in the same area as last recovery
         dist_from_last = math.hypot(
@@ -935,7 +1156,9 @@ class MissionController(Node):
             self._cell_visit_count.clear()
             self._visited_cells.clear()
             self._position_history.clear()
-            self.get_logger().warn("HARD RESET: cleared all cell counts + position history")
+            self._backtrack_target = None
+            self._backtrack_pos = None
+            self.get_logger().warn("HARD RESET: cleared cell counts + position history (room map preserved)")
         else:
             # Normal decay
             for cell in list(self._cell_visit_count):
