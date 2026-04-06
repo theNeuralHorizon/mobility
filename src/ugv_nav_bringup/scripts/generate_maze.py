@@ -146,38 +146,44 @@ print(f"\nGenerated {wall_id} wall segments")
 def sign_model(
     name: str, x: float, y: float,
     r: float, g: float, b: float,
-    texture: str = "",
+    facing: str = "south",
 ) -> str:
-    """Sign on a post at robot camera height, with optional texture."""
-    if texture:
-        mat = (
-            f'          <material><diffuse>{r} {g} {b} 1</diffuse>\n'
-            f'            <pbr><metal>\n'
-            f'              <albedo_map>../textures/{texture}</albedo_map>\n'
-            f'            </metal></pbr>\n'
-            f'          </material>\n'
-        )
-    else:
-        mat = (
-            f'          <material><ambient>{r} {g} {b} 1</ambient>'
-            f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
-        )
+    """Colored sign panel at robot camera height, facing the approaching robot.
+
+    The sign is a vertical colored panel (0.20 wide x 0.01 thin x 0.15 tall)
+    at z=0.08 (robot camera center height). No textures — the HSV color
+    detector works on solid color.  A thin dark post holds it up.
+
+    facing: direction the colored face points toward
+      - "south": robot approaches from south (+Y to -Y), sign faces -Y
+      - "north": robot approaches from north, sign faces +Y
+      - "east":  robot approaches from west, sign faces +X
+      - "west":  robot approaches from east, sign faces -X
+    """
+    yaw = {
+        "north": 1.5708,
+        "south": -1.5708,
+        "east":  0.0,
+        "west":  3.14159,
+    }.get(facing, -1.5708)
+
     return (
         f'    <model name="{name}"><static>true</static>\n'
         f'      <pose>{x} {y} 0 0 0 0</pose>\n'
         f'      <link name="post">\n'
         f'        <visual name="post"><geometry><cylinder>'
-        f'<radius>0.02</radius><length>0.25</length></cylinder></geometry>\n'
-        f'          <pose>0 0 0.125 0 0 0</pose>\n'
-        f'          <material><ambient>0.3 0.3 0.3 1</ambient>'
-        f'<diffuse>0.3 0.3 0.3 1</diffuse></material>\n'
+        f'<radius>0.01</radius><length>0.12</length></cylinder></geometry>\n'
+        f'          <pose>0 0 0.06 0 0 0</pose>\n'
+        f'          <material><ambient>0.2 0.2 0.2 1</ambient>'
+        f'<diffuse>0.2 0.2 0.2 1</diffuse></material>\n'
         f'        </visual>\n'
         f'      </link>\n'
         f'      <link name="sign">\n'
         f'        <visual name="face"><geometry><box>'
-        f'<size>0.25 0.25 0.01</size></box></geometry>\n'
-        f'          <pose>0 0 0.28 0 0 0</pose>\n'
-        + mat +
+        f'<size>0.20 0.01 0.15</size></box></geometry>\n'
+        f'          <pose>0 0 0.10 0 0 {yaw:.4f}</pose>\n'
+        f'          <material><ambient>{r} {g} {b} 1</ambient>'
+        f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
         f'        </visual>\n'
         f'      </link>\n'
         f'    </model>'
@@ -357,50 +363,54 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Path: (0,0)>(1,0)>(1,1)>(2,1)>(2,2)>(3,2)>(4,2)>(4,1)>(5,1)>(5,0) -->
     <!-- ============================================================== -->
 
-    <!-- 1. FORWARD at start zone — go north from (0,0) toward (0,1) -->
-{sign_model("sign_fwd_start", 1.0, 1.5, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- Direction signs: solid color panels at camera height (z=0.10) -->
+    <!-- Colors match HSV detector: FORWARD=cyan, RIGHT=blue, LEFT=green -->
+    <!-- STOP=red, GOAL=orange, INPLACE_ROTATION=purple -->
 
-    <!-- 2. FORWARD east along row 0 — in cell(0,0) east side -->
-{sign_model("sign_fwd_east", 1.5, 1.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 1. FORWARD at start zone — robot approaches from south -->
+{sign_model("sign_fwd_start", 1.0, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 3. FORWARD north in cell(1,0) — guide toward cell(1,1) -->
-{sign_model("sign_fwd_10", 3.0, 1.5, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 2. FORWARD east along row 0 — robot approaches from west -->
+{sign_model("sign_fwd_east", 1.5, 1.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 4. FORWARD north in cell(1,1) — continue toward cell(1,2) area -->
-{sign_model("sign_fwd_11", 3.0, 3.5, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 3. FORWARD north in cell(1,0) — robot approaches from south -->
+{sign_model("sign_fwd_10", 3.0, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 5. RIGHT at cell(1,1) junction — turn east toward cell(2,1) -->
-{sign_model("sign_right_11", 3.5, 3.0, 0, 0, 0.8, texture="sign_right.png")}
+    <!-- 4. FORWARD north in cell(1,1) — robot approaches from south -->
+{sign_model("sign_fwd_11", 3.0, 3.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 6. FORWARD north in cell(2,1) — toward cell(2,2) -->
-{sign_model("sign_fwd_21", 5.0, 3.5, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 5. RIGHT at cell(1,1) junction — robot approaches from west -->
+{sign_model("sign_right_11", 3.5, 3.0, 0, 0, 0.8, facing="west")}
 
-    <!-- 7. FORWARD in cell(2,2) — continue east toward cell(3,2) -->
-{sign_model("sign_fwd_22", 5.0, 5.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 6. FORWARD north in cell(2,1) — robot approaches from south -->
+{sign_model("sign_fwd_21", 5.0, 3.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 8. RIGHT at cell(3,2) — turn south toward cell(4,2)/(4,1) -->
-{sign_model("sign_right_32", 7.5, 5.0, 0, 0, 0.8, texture="sign_right.png")}
+    <!-- 7. FORWARD east in cell(2,2) — robot approaches from west -->
+{sign_model("sign_fwd_22", 5.0, 5.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 9. FORWARD in cell(4,2) — continue south/east -->
-{sign_model("sign_fwd_42", 9.0, 5.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 8. RIGHT at cell(3,2) — robot approaches from west -->
+{sign_model("sign_right_32", 7.5, 5.0, 0, 0, 0.8, facing="west")}
 
-    <!-- 10. RIGHT at cell(4,1) — turn east toward cell(5,1) and goal -->
-{sign_model("sign_right_41", 9.0, 3.5, 0, 0, 0.8, texture="sign_right.png")}
+    <!-- 9. FORWARD in cell(4,2) — robot approaches from west -->
+{sign_model("sign_fwd_42", 9.0, 5.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 11. FORWARD toward goal in cell(5,1) -->
-{sign_model("sign_fwd_51", 11.0, 3.0, 0, 0.8, 0.8, texture="sign_forward.png")}
+    <!-- 10. RIGHT at cell(4,1) — robot approaches from north -->
+{sign_model("sign_right_41", 9.0, 3.5, 0, 0, 0.8, facing="north")}
 
-    <!-- 12. GOAL sign at cell(5,0) where actual goal zone is -->
-{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0, texture="sign_goal.png")}
+    <!-- 11. FORWARD toward goal in cell(5,1) — robot approaches from west -->
+{sign_model("sign_fwd_51", 11.0, 3.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 13. MISLEADING: At (0,2) junction, LEFT goes to dead-end -->
-{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0, texture="sign_left.png")}
+    <!-- 12. GOAL sign at cell(5,0) — robot approaches from north -->
+{sign_model("sign_goal", 11.0, 1.5, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 14. STOP sign near false goal at cell(3,3) -->
-{sign_model("sign_stop", 9.0, 7.0, 0.8, 0, 0, texture="sign_stop.png")}
+    <!-- 13. MISLEADING LEFT at (0,2) junction — robot approaches from south -->
+{sign_model("sign_left_misleading", 1.0, 5.0, 0, 0.8, 0, facing="south")}
 
-    <!-- 15. INPLACE_ROTATION sign in upper corridor for bonus points -->
-{sign_model("sign_inplace_rotation", 5.0, 9.0, 0.6, 0, 0.6, texture="sign_inplace_rotation.png")}
+    <!-- 14. STOP near false goal — robot approaches from west -->
+{sign_model("sign_stop", 9.0, 7.0, 0.8, 0, 0, facing="west")}
+
+    <!-- 15. INPLACE_ROTATION in upper corridor — robot approaches from west -->
+{sign_model("sign_inplace_rotation", 5.0, 9.0, 0.6, 0, 0.6, facing="west")}
 
     <!-- Static obstacles -->
     <model name="obs1"><static>true</static>
