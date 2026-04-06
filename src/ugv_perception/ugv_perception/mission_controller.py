@@ -44,8 +44,8 @@ from std_msgs.msg import Int32MultiArray, String
 #  Constants
 # ---------------------------------------------------------------------------
 
-MAX_LINEAR: Final[float] = 0.4            # reduced from 0.5 to prevent flipping
-MAX_ANGULAR: Final[float] = 1.0           # reduced from 1.2 for stability
+MAX_LINEAR: Final[float] = 0.3            # reduced for fewer collisions
+MAX_ANGULAR: Final[float] = 0.8           # smoother turns
 WALL_DIST: Final[float] = 0.4
 KP: Final[float] = 1.4
 KI: Final[float] = 0.05
@@ -750,8 +750,8 @@ class MissionController(Node):
 
     def _is_thin_obstacle(self, r: LidarRegions) -> bool:
         """Detect thin obstacles like sign posts (front blocked but sides open)."""
-        return (r.front < FRONT_STOP
-                and (r.fright > 0.6 or r.fleft > 0.6)
+        return (r.front < FRONT_SLOW
+                and (r.fright > 0.5 or r.fleft > 0.5)
                 and r.front > FRONT_REVERSE)
 
     def _do_dodge_obstacle(self) -> None:
@@ -1070,15 +1070,15 @@ class MissionController(Node):
             self._do_sign_backtrack(now)
 
     def _do_sign_sidestep(self, now: float) -> None:
-        """Briefly steer to the side to avoid the sign post, then drive forward."""
+        """Steer wider to the side to avoid the sign post, then drive forward."""
         elapsed = now - self._sign_drive_start
         r = self._regions
-        if elapsed < 0.8:
-            # Steer toward the side with more space
+        if elapsed < 1.2:
+            # Steer wider and slower to clear the sign post
             if r.fleft > r.fright:
-                self._publish_vel(MAX_LINEAR * 0.4, 0.5)
+                self._publish_vel(MAX_LINEAR * 0.3, 0.6)
             else:
-                self._publish_vel(MAX_LINEAR * 0.4, -0.5)
+                self._publish_vel(MAX_LINEAR * 0.3, -0.6)
         else:
             # Done sidestepping, now drive forward
             self._sign_phase = "driving"

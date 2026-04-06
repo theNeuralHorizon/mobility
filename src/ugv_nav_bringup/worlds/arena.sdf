@@ -359,8 +359,8 @@
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
     <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- 1. FORWARD north from start toward aruco_0 -->
-    <model name="sign_fwd_north"><static>true</static>
+    <!-- 1. FORWARD — start toward aruco_0 -->
+    <model name="sign_forward_1"><static>true</static>
       <pose>0.3 1.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -379,8 +379,8 @@
       </link>
     </model>
 
-    <!-- 2. FORWARD south — return from (0,1) dead end after seeing aruco_0 -->
-    <model name="sign_fwd_return"><static>true</static>
+    <!-- 2. FORWARD — return from dead end -->
+    <model name="sign_forward_2"><static>true</static>
       <pose>0.3 2.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -399,8 +399,8 @@
       </link>
     </model>
 
-    <!-- 3. RIGHT east — after returning to (0,0), head east -->
-    <model name="sign_right_east"><static>true</static>
+    <!-- 3. RIGHT — head east after return -->
+    <model name="sign_right_1"><static>true</static>
       <pose>1.5 0.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -419,8 +419,8 @@
       </link>
     </model>
 
-    <!-- 4. FORWARD north in cell(1,0) toward (1,1) -->
-    <model name="sign_fwd_10"><static>true</static>
+    <!-- 4. FORWARD — toward cell(1,1) -->
+    <model name="sign_forward_3"><static>true</static>
       <pose>2.3 1.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -439,8 +439,8 @@
       </link>
     </model>
 
-    <!-- 5. RIGHT east at cell(1,1) toward aruco_1 in (2,1) -->
-    <model name="sign_right_11"><static>true</static>
+    <!-- 5. RIGHT — toward aruco_1 -->
+    <model name="sign_right_2"><static>true</static>
       <pose>3.5 2.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -459,8 +459,8 @@
       </link>
     </model>
 
-    <!-- 6. FORWARD north in cell(2,1) toward (2,2) -->
-    <model name="sign_fwd_21"><static>true</static>
+    <!-- 6. FORWARD — toward cell(2,2) -->
+    <model name="sign_forward_4"><static>true</static>
       <pose>4.3 3.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -479,8 +479,8 @@
       </link>
     </model>
 
-    <!-- 7. FORWARD east in cell(2,2) toward (3,2) -->
-    <model name="sign_fwd_22"><static>true</static>
+    <!-- 7. FORWARD — toward cell(3,2) -->
+    <model name="sign_forward_5"><static>true</static>
       <pose>5.0 4.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -499,8 +499,8 @@
       </link>
     </model>
 
-    <!-- 8. FORWARD east in cell(3,2) toward aruco_3 in (4,2) -->
-    <model name="sign_fwd_32"><static>true</static>
+    <!-- 8. FORWARD — toward aruco_3 -->
+    <model name="sign_forward_6"><static>true</static>
       <pose>7.5 4.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -519,12 +519,10 @@
       </link>
     </model>
 
-    <!-- 9. (removed — sign_right_42 was blocking aruco_3 view) -->
-    <!-- Wall-following takes robot south from (4,2) to (4,1) naturally -->
+    <!-- 9. (removed — was blocking aruco_3 view) -->
 
-    <!-- 10. LEFT west at cell(4,1) — detour to aruco_2 in (3,1) -->
-    <!-- Moved to north side of cell so robot sees it coming from (4,2) -->
-    <model name="sign_left_41"><static>true</static>
+    <!-- 10. LEFT — detour to aruco_2 -->
+    <model name="sign_left_1"><static>true</static>
       <pose>8.5 3.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -543,8 +541,8 @@
       </link>
     </model>
 
-    <!-- 11. FORWARD east in cell(3,1) — return from aruco_2 dead end -->
-    <model name="sign_fwd_31"><static>true</static>
+    <!-- 11. FORWARD — return from aruco_2 dead end -->
+    <model name="sign_forward_7"><static>true</static>
       <pose>7.5 2.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -563,8 +561,8 @@
       </link>
     </model>
 
-    <!-- 12. RIGHT east at cell(4,1) — head to (5,1) toward goal -->
-    <model name="sign_right_41b"><static>true</static>
+    <!-- 12. RIGHT — toward goal -->
+    <model name="sign_right_3"><static>true</static>
       <pose>9.7 3.5 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -583,8 +581,8 @@
       </link>
     </model>
 
-    <!-- 13. FORWARD south in cell(5,1) toward goal -->
-    <model name="sign_fwd_51"><static>true</static>
+    <!-- 13. FORWARD — toward goal zone -->
+    <model name="sign_forward_8"><static>true</static>
       <pose>11.0 2.3 0 0 0 0</pose>
       <link name="post">
         <collision name="post_col"><geometry><cylinder><radius>0.03</radius><length>0.20</length></cylinder></geometry>
@@ -603,7 +601,7 @@
       </link>
     </model>
 
-    <!-- 14. GOAL at cell(5,0) — mission complete when all markers collected -->
+    <!-- 14. GOAL — mission complete -->
     <model name="sign_goal"><static>true</static>
       <pose>11.7 1.5 0 0 0 0</pose>
       <link name="post">
@@ -623,7 +621,7 @@
       </link>
     </model>
 
-    <!-- 15. MISLEADING LEFT at (0,2) — trap -->
+    <!-- 15. LEFT — misleading trap -->
     <model name="sign_left_misleading"><static>true</static>
       <pose>0.3 5.0 0 0 0 0</pose>
       <link name="post">
