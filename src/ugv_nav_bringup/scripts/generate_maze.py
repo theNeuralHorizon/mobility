@@ -35,7 +35,7 @@ walls_v = [
     [True,  False, True,  False, True,  False, True],   # r=0
     [True,  True,  False, True,  False, False, True],    # r=1
     [True,  False, True,  False, False, True,  True],    # r=2
-    [True,  True,  False, False, True,  False, True],    # r=3
+    [True,  True,  False, False, False, False, True],    # r=3 (cut wall_22 lower half to open false goal access)
     [True,  False, True,  False, True,  False, True],    # r=4
 ]
 
@@ -299,14 +299,22 @@ sdf = f'''<?xml version="1.0" ?>
       </visual></link>
     </model>
 
-    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) -->
+    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) — extended to full cell + wall -->
     <model name="true_goal"><static>true</static>
       <pose>11 1 0.005 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box>
-        <size>1.6 1.6 0.01</size></box></geometry>
-        <material><ambient>0.9 0.7 0.1 1</ambient>
-          <diffuse>0.9 0.7 0.1 1</diffuse></material>
-      </visual></link>
+      <link name="l">
+        <visual name="floor"><geometry><box>
+          <size>2.0 2.0 0.01</size></box></geometry>
+          <material><ambient>0.9 0.7 0.1 1</ambient>
+            <diffuse>0.9 0.7 0.1 1</diffuse></material>
+        </visual>
+        <visual name="wall_marker"><geometry><box>
+          <size>1.8 0.01 0.5</size></box></geometry>
+          <pose>0 -0.92 0.25 0 0 0</pose>
+          <material><ambient>0.9 0.7 0.1 1</ambient>
+            <diffuse>0.9 0.7 0.1 1</diffuse></material>
+        </visual>
+      </link>
     </model>
 
     <!-- FALSE GOAL cell(4,3) center=(9,7) -->
@@ -394,8 +402,7 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- Put on east wall x=10, walls_v[0][5]=F... use right boundary x=12 -->
 {sign_model("sign_right_3", 9.0, 2.08, 0, 0, 0.8, facing="north")}
 
-    <!-- 13. FORWARD south — right boundary x=12 (always exists), cell(5,1) -->
-{sign_model("sign_forward_8", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
+    <!-- 13. (REMOVED sign_forward_8 — was redirecting robot away from goal) -->
 
     <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0) -->
 {sign_model("sign_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}

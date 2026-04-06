@@ -68,14 +68,22 @@
       </visual></link>
     </model>
 
-    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) -->
+    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) — extended to full cell + wall -->
     <model name="true_goal"><static>true</static>
       <pose>11 1 0.005 0 0 0</pose>
-      <link name="l"><visual name="v"><geometry><box>
-        <size>1.6 1.6 0.01</size></box></geometry>
-        <material><ambient>0.9 0.7 0.1 1</ambient>
-          <diffuse>0.9 0.7 0.1 1</diffuse></material>
-      </visual></link>
+      <link name="l">
+        <visual name="floor"><geometry><box>
+          <size>2.0 2.0 0.01</size></box></geometry>
+          <material><ambient>0.9 0.7 0.1 1</ambient>
+            <diffuse>0.9 0.7 0.1 1</diffuse></material>
+        </visual>
+        <visual name="wall_marker"><geometry><box>
+          <size>1.8 0.01 0.5</size></box></geometry>
+          <pose>0 -0.92 0.25 0 0 0</pose>
+          <material><ambient>0.9 0.7 0.1 1</ambient>
+            <diffuse>0.9 0.7 0.1 1</diffuse></material>
+        </visual>
+      </link>
     </model>
 
     <!-- FALSE GOAL cell(4,3) center=(9,7) -->
@@ -279,10 +287,10 @@
       </link>
     </model>
     <model name="wall_22"><static>true</static>
-      <pose>8.000 8.000 0.5 0 0 1.5708</pose>
+      <pose>8.000 9.000 0.5 0 0 1.5708</pose>
       <link name="link">
-        <collision name="c"><geometry><box><size>4.000 0.15 1.0</size></box></geometry></collision>
-        <visual name="v"><geometry><box><size>4.000 0.15 1.0</size></box></geometry>
+        <collision name="c"><geometry><box><size>2.000 0.15 1.0</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>2.000 0.15 1.0</size></box></geometry>
           <material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
         </visual>
       </link>
@@ -451,13 +459,7 @@
       </visual></link>
     </model>
 
-    <!-- 13. FORWARD south — right boundary x=12 (always exists), cell(5,1) -->
-    <model name="sign_forward_8"><static>true</static>
-      <pose>11.92 3.0 0.10 0 0 -1.5708</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
-        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
-      </visual></link>
-    </model>
+    <!-- 13. (REMOVED sign_forward_8 — was redirecting robot away from goal) -->
 
     <!-- 14. GOAL — south boundary y=0 (always exists), cell(5,0) -->
     <model name="sign_goal"><static>true</static>
