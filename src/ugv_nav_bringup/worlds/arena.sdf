@@ -373,9 +373,9 @@
     <!--   N>(2,2)E>(3,2)E>(4,2)[A3]S>(4,1)W>(3,1)[A2]E>(4,1)          -->
     <!--   E>(5,1)S>(5,0)[GOAL]                                          -->
 
-    <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
+    <!-- 1. FORWARD north — south boundary y=0 wall, cell(0,0) (robot spawns facing north) -->
     <model name="sign_forward_1"><static>true</static>
-      <pose>0.08 1.0 0.10 0 0 1.5708</pose>
+      <pose>1.0 0.08 0.10 0 0 0.0000</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
@@ -485,13 +485,8 @@
       </visual></link>
     </model>
 
-    <!-- 17. INPLACE_ROTATION — south wall y=8, walls_h[4][2]=T -->
-    <model name="sign_inplace_rotation"><static>true</static>
-      <pose>5.0 7.92 0.10 0 0 0.0000</pose>
-      <link name="l"><visual name="v"><geometry><box><size>0.25 0.01 0.20</size></box></geometry>
-        <material><ambient>0.6 0 0.6 1</ambient><diffuse>0.6 0 0.6 1</diffuse></material>
-      </visual></link>
-    </model>
+    <!-- 17. (REMOVED INPLACE_ROTATION — HSV range H:20-35 causes false positives -->
+    <!--       across the maze, triggering 5s spins + stuck recoveries repeatedly) -->
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>

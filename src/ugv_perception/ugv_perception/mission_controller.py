@@ -477,7 +477,11 @@ class MissionController(Node):
                     f"/{len(REQUIRED_MARKERS)}")
             return
 
-        # STOP / INPLACE_ROTATION: non-directional, handle below
+        # Ignore INPLACE_ROTATION entirely — HSV false positives cause loops
+        if direction == "INPLACE_ROTATION":
+            return
+
+        # STOP: non-directional, handle below
         # FORWARD / LEFT / RIGHT: use absolute direction system
         if direction in ("FORWARD", "LEFT", "RIGHT"):
             # Absolute direction check: skip if backtracking

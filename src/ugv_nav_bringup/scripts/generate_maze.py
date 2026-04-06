@@ -366,8 +366,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!--   N>(2,2)E>(3,2)E>(4,2)[A3]S>(4,1)W>(3,1)[A2]E>(4,1)          -->
     <!--   E>(5,1)S>(5,0)[GOAL]                                          -->
 
-    <!-- 1. FORWARD — left boundary wall x=0 (always exists), cell(0,0) -->
-{sign_model("sign_forward_1", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
+    <!-- 1. FORWARD north — south boundary y=0 wall, cell(0,0) (robot spawns facing north) -->
+{sign_model("sign_forward_1", 1.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- 2. (REMOVED — was overlapping aruco_0 visually from camera angle) -->
     <!-- Wall-following handles return from (0,1) dead end naturally -->
@@ -413,8 +413,8 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- 16. STOP — south wall y=6, walls_h[3][4]=T, near false goal -->
 {sign_model("sign_stop", 9.0, 6.08, 0.8, 0, 0, facing="north")}
 
-    <!-- 17. INPLACE_ROTATION — south wall y=8, walls_h[4][2]=T -->
-{sign_model("sign_inplace_rotation", 5.0, 7.92, 0.6, 0, 0.6, facing="north")}
+    <!-- 17. (REMOVED INPLACE_ROTATION — HSV range H:20-35 causes false positives -->
+    <!--       across the maze, triggering 5s spins + stuck recoveries repeatedly) -->
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>
