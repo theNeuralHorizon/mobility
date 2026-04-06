@@ -363,57 +363,64 @@ sdf = f'''<?xml version="1.0" ?>
 {aruco_model("aruco_3", 9.925, 5.0, 0.15, marker_id=3, facing="east")}
 
     <!-- ============================================================== -->
-    <!-- Direction signs along intended path                            -->
-    <!-- Path: (0,0)>(1,0)>(1,1)>(2,1)>(2,2)>(3,2)>(4,2)>(4,1)>(5,1)>(5,0) -->
+    <!-- Direction signs — path visits ALL 4 ArUco markers              -->
+    <!-- Path: (0,0)N>(0,1)[A0] S>(0,0)E>(1,0)N>(1,1)E>(2,1)[A1]     -->
+    <!--   N>(2,2)E>(3,2)E>(4,2)[A3] S>(4,1)W>(3,1)[A2] E>(4,1)      -->
+    <!--   E>(5,1)S>(5,0)[GOAL]                                        -->
     <!-- ============================================================== -->
 
-    <!-- Direction signs: solid color panels at camera height (z=0.10)     -->
-    <!-- Signs placed near corridor WALLS (offset 0.3m) so bot can pass   -->
     <!-- Colors: FORWARD=cyan, RIGHT=blue, LEFT=green, STOP=red, GOAL=orange -->
+    <!-- Signs offset 0.3m from walls so bot can pass                   -->
 
-    <!-- 1. FORWARD at start zone — offset to left wall side -->
-{sign_model("sign_fwd_start", 0.3, 1.5, 0, 0.8, 0.8, facing="south")}
+    <!-- 1. FORWARD north from start toward aruco_0 -->
+{sign_model("sign_fwd_north", 0.3, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 2. FORWARD east along row 0 — offset to bottom wall -->
-{sign_model("sign_fwd_east", 1.5, 0.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 2. FORWARD south — return from (0,1) dead end after seeing aruco_0 -->
+{sign_model("sign_fwd_return", 0.3, 2.5, 0, 0.8, 0.8, facing="north")}
 
-    <!-- 3. FORWARD north in cell(1,0) — offset to left wall -->
+    <!-- 3. RIGHT east — after returning to (0,0), head east -->
+{sign_model("sign_right_east", 1.5, 0.3, 0, 0, 0.8, facing="south")}
+
+    <!-- 4. FORWARD north in cell(1,0) toward (1,1) -->
 {sign_model("sign_fwd_10", 2.3, 1.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 4. FORWARD north in cell(1,1) — offset to left wall -->
-{sign_model("sign_fwd_11", 2.3, 3.5, 0, 0.8, 0.8, facing="south")}
-
-    <!-- 5. RIGHT at cell(1,1) junction — offset to bottom wall -->
+    <!-- 5. RIGHT east at cell(1,1) toward aruco_1 in (2,1) -->
 {sign_model("sign_right_11", 3.5, 2.3, 0, 0, 0.8, facing="west")}
 
-    <!-- 6. FORWARD north in cell(2,1) — offset to left wall -->
+    <!-- 6. FORWARD north in cell(2,1) toward (2,2) -->
 {sign_model("sign_fwd_21", 4.3, 3.5, 0, 0.8, 0.8, facing="south")}
 
-    <!-- 7. FORWARD east in cell(2,2) — offset to bottom wall -->
+    <!-- 7. FORWARD east in cell(2,2) toward (3,2) -->
 {sign_model("sign_fwd_22", 5.0, 4.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 8. RIGHT at cell(3,2) — offset to bottom wall -->
-{sign_model("sign_right_32", 7.5, 4.3, 0, 0, 0.8, facing="west")}
+    <!-- 8. FORWARD east in cell(3,2) toward aruco_3 in (4,2) -->
+{sign_model("sign_fwd_32", 7.5, 4.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 9. FORWARD in cell(4,2) — offset to bottom wall -->
-{sign_model("sign_fwd_42", 9.0, 4.3, 0, 0.8, 0.8, facing="west")}
+    <!-- 9. RIGHT south at cell(4,2) after seeing aruco_3 -->
+{sign_model("sign_right_42", 9.7, 4.5, 0, 0, 0.8, facing="west")}
 
-    <!-- 10. RIGHT at cell(4,1) — offset to right wall -->
-{sign_model("sign_right_41", 9.7, 3.5, 0, 0, 0.8, facing="north")}
+    <!-- 10. LEFT west at cell(4,1) — detour to aruco_2 in (3,1) -->
+{sign_model("sign_left_41", 8.5, 2.3, 0, 0.8, 0, facing="east")}
 
-    <!-- 11. FORWARD toward goal in cell(5,1) — offset to bottom wall -->
+    <!-- 11. FORWARD east in cell(3,1) — return from aruco_2 dead end -->
+{sign_model("sign_fwd_31", 7.5, 2.3, 0, 0.8, 0.8, facing="west")}
+
+    <!-- 12. RIGHT east at cell(4,1) — head to (5,1) toward goal -->
+{sign_model("sign_right_41b", 9.7, 3.5, 0, 0, 0.8, facing="north")}
+
+    <!-- 13. FORWARD south in cell(5,1) toward goal -->
 {sign_model("sign_fwd_51", 11.0, 2.3, 0, 0.8, 0.8, facing="west")}
 
-    <!-- 12. GOAL sign at cell(5,0) — offset to right wall -->
+    <!-- 14. GOAL at cell(5,0) — mission complete when all markers collected -->
 {sign_model("sign_goal", 11.7, 1.5, 0.9, 0.5, 0, facing="north")}
 
-    <!-- 13. MISLEADING LEFT at (0,2) — offset to left wall -->
+    <!-- 15. MISLEADING LEFT at (0,2) — trap -->
 {sign_model("sign_left_misleading", 0.3, 5.0, 0, 0.8, 0, facing="south")}
 
-    <!-- 14. STOP near false goal — offset to bottom wall -->
+    <!-- 16. STOP near false goal -->
 {sign_model("sign_stop", 9.0, 6.3, 0.8, 0, 0, facing="west")}
 
-    <!-- 15. INPLACE_ROTATION in upper corridor — offset to bottom wall -->
+    <!-- 17. INPLACE_ROTATION in upper corridor -->
 {sign_model("sign_inplace_rotation", 5.0, 8.3, 0.6, 0, 0.6, facing="west")}
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->

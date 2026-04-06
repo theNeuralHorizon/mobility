@@ -83,6 +83,15 @@ FRONT_REVERSE: Final[float] = 0.22       # too close — reverse while turning
 WALL_CLOSE: Final[float] = 0.30
 WALL_FAR: Final[float] = 0.80
 
+# Tremaux's algorithm
+JUNCTION_COOLDOWN: Final[float] = 3.0
+JUNCTION_GRID_QUANT: Final[float] = 1.0
+TREMAUX_MAX_COUNT: Final[int] = 2
+
+# Absolute direction signs
+SIGN_REENCOUNTER_RADIUS: Final[float] = 3.0
+SIGN_HEADING_ALIGNED: Final[float] = math.pi / 2
+
 
 # ---------------------------------------------------------------------------
 #  Enums / Frozen Data
@@ -168,6 +177,42 @@ def _pos_to_room(x: float, y: float) -> tuple[int, int]:
     col = max(0, min(MAZE_COLS - 1, int(math.floor(x / ROOM_SIZE))))
     row = max(0, min(MAZE_ROWS - 1, int(math.floor(y / ROOM_SIZE))))
     return (col, row)
+
+
+def _pos_to_junction_key(x: float, y: float) -> tuple[int, int]:
+    """Quantize position to junction grid (1m resolution)."""
+    return (round(x / JUNCTION_GRID_QUANT), round(y / JUNCTION_GRID_QUANT))
+
+
+def _snap_to_cardinal(yaw: float) -> str:
+    """Snap yaw angle to nearest cardinal direction."""
+    y = _normalize_angle(yaw)
+    if -math.pi / 4 <= y < math.pi / 4:
+        return "E"
+    elif math.pi / 4 <= y < 3 * math.pi / 4:
+        return "N"
+    elif -3 * math.pi / 4 <= y < -math.pi / 4:
+        return "S"
+    else:
+        return "W"
+
+
+def _cardinal_to_yaw(d: str) -> float:
+    """Convert cardinal direction to yaw angle."""
+    return {"N": math.pi / 2, "E": 0.0, "S": -math.pi / 2, "W": math.pi}[d]
+
+
+def _relative_to_absolute(relative: str, heading: str) -> str:
+    """Convert relative direction (FORWARD/LEFT/RIGHT) to absolute (N/S/E/W)."""
+    if relative == "FORWARD":
+        return heading
+    left_map = {"N": "W", "E": "N", "S": "E", "W": "S"}
+    right_map = {"N": "E", "E": "S", "S": "W", "W": "N"}
+    if relative == "LEFT":
+        return left_map[heading]
+    if relative == "RIGHT":
+        return right_map[heading]
+    return heading
 
 
 def _regions_from_scan(ranges: list[float]) -> LidarRegions:
@@ -333,12 +378,16 @@ class MissionController(Node):
         self._scan_last_yaw: float = 0.0
         self._scan_total_rotation: float = 0.0
 
+        # -- absolute direction sign memory (N/S/E/W) --
+        self._sign_absolute_memory: list[dict] = []
+        # Each: {position, absolute_direction, original_sign, heading}
+
         # -- one-time sign memory: signs already followed --
         self._used_signs: list[dict] = []  # {x, y, direction, led_to_dead_end}
 
-        # -- backtracking to unexplored rooms --
-        self._backtrack_target: tuple[int, int] | None = None
-        self._backtrack_pos: tuple[float, float] | None = None
+        # -- Tremaux's junction decision log --
+        self._junction_log: dict[tuple[int, int], dict[str, int]] = {}
+        self._last_junction_time: float = 0.0
 
         # -- sign logging & misleading detection --
         self._sign_log: list[dict] = []
@@ -394,64 +443,77 @@ class MissionController(Node):
                     self.get_logger().info("ALL 4 MARKERS COLLECTED!")
                     if self._goal_position is not None:
                         self.get_logger().info(
-                            f"Goal memorized at {self._goal_position} — seeking!")
+                            f"Goal memorized at {self._goal_position} — navigating!")
                         self._transition(State.GOAL_SEEK)
+                    else:
+                        self.get_logger().info(
+                            "GOAL sign not yet seen — continue exploring to find it")
 
     def _sign_cb(self, msg: String) -> None:
         if self._state in (State.RECOVERY, State.MISSION_COMPLETE,
                            State.SIGN_FOLLOW):
             return
 
-        # 10s cooldown between following any sign (prevents sign-loop)
+        # 10s cooldown between following any sign
         if time.monotonic() - self._last_sign_follow_time < 10.0:
             return
 
         direction = msg.data
 
+        # GOAL sign: all markers → MISSION_COMPLETE, else memorize
         if direction == "GOAL":
             if self._visited_markers >= REQUIRED_MARKERS:
-                self._transition(State.GOAL_SEEK)
+                self.get_logger().info(
+                    "ALL MARKERS + GOAL → MISSION_COMPLETE!")
+                self._transition(State.MISSION_COMPLETE)
             else:
-                # Remember goal position for later return
                 self._goal_position = (self._x, self._y)
                 self._goal_room = _pos_to_room(self._x, self._y)
                 self.get_logger().info(
                     f"GOAL memorized at ({self._x:.1f},{self._y:.1f}) "
-                    f"room {self._goal_room} — markers "
-                    f"{len(self._visited_markers)}/{len(REQUIRED_MARKERS)}")
+                    f"— markers {len(self._visited_markers)}"
+                    f"/{len(REQUIRED_MARKERS)}")
             return
+
+        # STOP / INPLACE_ROTATION: non-directional, handle below
+        # FORWARD / LEFT / RIGHT: use absolute direction system
+        if direction in ("FORWARD", "LEFT", "RIGHT"):
+            # Absolute direction check: skip if backtracking
+            result = self._check_sign_absolute(direction)
+            if result == "skip":
+                self.get_logger().warn(
+                    f"BACKTRACK: {direction} at ({self._x:.1f},{self._y:.1f})"
+                    f" — heading opposite to stored direction — SKIP")
+                return
+            elif result is None:
+                # First encounter: store absolute direction
+                heading = _snap_to_cardinal(self._yaw)
+                abs_dir = _relative_to_absolute(direction, heading)
+                self._sign_absolute_memory.append({
+                    "position": (self._x, self._y),
+                    "absolute_direction": abs_dir,
+                    "original_sign": direction,
+                    "heading": heading,
+                })
+                self.get_logger().info(
+                    f"NEW sign: {direction} → absolute {abs_dir} "
+                    f"at ({self._x:.1f},{self._y:.1f})")
 
         if not self._validate_sign_direction(direction):
             return
 
-        # Check if this sign was already used (one-time signs)
-        # Use 3.0m radius (full room) so sign is recognized from any approach angle
+        # Dead-end sign check
         for entry in self._used_signs:
             if (entry["direction"] == direction
-                    and math.hypot(self._x - entry["x"],
-                                   self._y - entry["y"]) < 3.0):
-                if entry.get("led_to_dead_end"):
-                    self.get_logger().warn(
-                        f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
-                        f" led to dead-end last time — SKIPPING")
-                    return
-                self.get_logger().info(
-                    f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
-                    f" already followed — skipping")
-                return
-
-        # Check if this sign location was previously flagged as misleading
-        for entry in self._sign_log:
-            if (entry["direction"] == direction
-                    and entry["misleading"]
+                    and entry.get("led_to_dead_end")
                     and math.hypot(self._x - entry["x"],
                                    self._y - entry["y"]) < 3.0):
                 self.get_logger().warn(
-                    f"{direction} sign at ({self._x:.1f},{self._y:.1f})"
-                    f" previously flagged MISLEADING - skipping")
+                    f"{direction} at ({self._x:.1f},{self._y:.1f})"
+                    f" → dead-end — SKIP")
                 return
 
-        # Log sign encounter and store pre-sign position for backtracking
+        # Log and follow
         self._pre_sign_x = self._x
         self._pre_sign_y = self._y
         self._pre_sign_yaw = self._yaw
@@ -462,8 +524,6 @@ class MissionController(Node):
             "misleading": False,
         }
         self._sign_log.append(self._active_sign_entry)
-
-        # Record as used sign (one-time use)
         self._used_signs.append({
             "direction": direction,
             "x": self._x,
@@ -472,12 +532,31 @@ class MissionController(Node):
         })
 
         self.get_logger().info(
-            f"SIGN logged: {direction} at ({self._x:.1f},{self._y:.1f})"
-            f" [used signs: {len(self._used_signs)}]")
-
+            f"FOLLOW: {direction} at ({self._x:.1f},{self._y:.1f})")
         self._current_sign = direction
         self._last_sign_follow_time = time.monotonic()
         self._transition(State.SIGN_FOLLOW)
+
+    def _check_sign_absolute(self, direction: str) -> str | None:
+        """Check if this is a re-encounter using absolute direction memory.
+
+        Returns "follow" (aligned), "skip" (backtracking), or None (first encounter).
+        """
+        for entry in self._sign_absolute_memory:
+            dist = math.hypot(self._x - entry["position"][0],
+                              self._y - entry["position"][1])
+            if dist > SIGN_REENCOUNTER_RADIUS:
+                continue
+            if entry["original_sign"] != direction:
+                continue
+            # Found match — check heading alignment
+            abs_yaw = _cardinal_to_yaw(entry["absolute_direction"])
+            diff = abs(_normalize_angle(self._yaw - abs_yaw))
+            if diff < SIGN_HEADING_ALIGNED:
+                return "follow"
+            else:
+                return "skip"
+        return None
 
     # ------------------------------------------------------------------
     #  Odom helper updates (called from _odom_cb)
@@ -632,6 +711,12 @@ class MissionController(Node):
     def _do_exploring(self) -> None:
         now = time.monotonic()
 
+        # Passive Tremaux: log junctions as robot passes through
+        if (now - self._last_junction_time > JUNCTION_COOLDOWN
+                and self._detect_junction()):
+            heading = _snap_to_cardinal(self._yaw)
+            self._register_junction(heading)
+
         # Room scan: ONLY triggered by loop/recovery, not on room entry
         if self._scanning:
             self._do_room_scan()
@@ -756,6 +841,73 @@ class MissionController(Node):
                 self._publish_vel(MAX_LINEAR, 0.0)
             else:
                 self._publish_vel(0.05, -MAX_ANGULAR * 0.7)
+
+    # ------------------------------------------------------------------
+    #  Tremaux's junction decision system
+    # ------------------------------------------------------------------
+
+    def _detect_junction(self) -> bool:
+        """Return True if 2+ cardinal directions have LiDAR range > WALL_FAR."""
+        r = self._regions
+        heading = _snap_to_cardinal(self._yaw)
+        # Map LiDAR to cardinal directions based on current heading
+        card_map = self._get_cardinal_lidar(heading)
+        openings = sum(1 for v in card_map.values() if v > WALL_FAR)
+        return openings >= 2
+
+    def _get_cardinal_lidar(self, heading: str) -> dict[str, float]:
+        """Map N/S/E/W to LiDAR ranges based on current heading."""
+        r = self._regions
+        if heading == "N":
+            return {"N": r.front, "E": r.right, "W": r.left, "S": 0.0}
+        elif heading == "E":
+            return {"E": r.front, "N": r.left, "S": r.right, "W": 0.0}
+        elif heading == "S":
+            return {"S": r.front, "W": r.right, "E": r.left, "N": 0.0}
+        else:
+            return {"W": r.front, "S": r.left, "N": r.right, "E": 0.0}
+
+    def _find_junction(self, x: float, y: float) -> tuple[int, int] | None:
+        """Find existing junction within 1m of position."""
+        for jk in self._junction_log:
+            jx = jk[0] * JUNCTION_GRID_QUANT
+            jy = jk[1] * JUNCTION_GRID_QUANT
+            if math.hypot(x - jx, y - jy) < 1.0:
+                return jk
+        return None
+
+    def _register_junction(self, direction: str) -> None:
+        """Record that we took exit 'direction' at current position."""
+        jk = self._find_junction(self._x, self._y)
+        if jk is None:
+            jk = _pos_to_junction_key(self._x, self._y)
+        if jk not in self._junction_log:
+            self._junction_log[jk] = {"N": 0, "S": 0, "E": 0, "W": 0}
+        self._junction_log[jk][direction] += 1
+        self._last_junction_time = time.monotonic()
+        self.get_logger().info(
+            f"TREMAUX junction {jk}: took {direction} "
+            f"({self._junction_log[jk]})")
+
+    def _tremaux_choose(self) -> str | None:
+        """Choose least-visited exit at current junction. Returns N/S/E/W or None."""
+        jk = self._find_junction(self._x, self._y)
+        if jk is None:
+            jk = _pos_to_junction_key(self._x, self._y)
+        if jk not in self._junction_log:
+            self._junction_log[jk] = {"N": 0, "S": 0, "E": 0, "W": 0}
+        log = self._junction_log[jk]
+        heading = _snap_to_cardinal(self._yaw)
+        lidar = self._get_cardinal_lidar(heading)
+
+        candidates = []
+        for d in ("N", "S", "E", "W"):
+            if lidar.get(d, 0.0) > WALL_FAR and log[d] < TREMAUX_MAX_COUNT:
+                candidates.append((d, log[d], lidar[d]))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda c: (c[1], -c[2]))
+        return candidates[0][0]
 
     # ------------------------------------------------------------------
     #  Room scanning (sub-state within EXPLORING)
@@ -1096,18 +1248,49 @@ class MissionController(Node):
         elapsed = time.monotonic() - self._recovery_start
 
         if self._consecutive_stucks >= 3:
-            # PANIC mode: aggressive escape
             self._do_recovery_panic(elapsed)
         else:
-            strategy = self._recovery_index % 4
+            strategy = self._recovery_index % 5
             if strategy == 0:
-                self._do_recovery_spin(elapsed)
+                # Tremaux: if at junction use it, else spin
+                if self._detect_junction():
+                    self._do_recovery_tremaux(elapsed)
+                else:
+                    self._do_recovery_spin(elapsed)
             elif strategy == 1:
                 self._do_recovery_backtrack(elapsed)
             elif strategy == 2:
                 self._do_recovery_escape(elapsed)
-            else:
+            elif strategy == 3:
                 self._do_recovery_reorient(elapsed)
+            else:
+                self._do_recovery_spin(elapsed)
+
+    def _do_recovery_tremaux(self, elapsed: float) -> None:
+        """Tremaux recovery: choose least-visited exit, turn, drive."""
+        if elapsed < 0.5:
+            chosen = self._tremaux_choose()
+            if chosen is None:
+                self._do_recovery_spin(elapsed)
+                return
+            self._register_junction(chosen)
+            self._recovery_target_yaw = _cardinal_to_yaw(chosen)
+            self.get_logger().info(f"TREMAUX recovery: chose {chosen}")
+            self._publish_vel(0.0, 0.0)
+        elif elapsed < 3.0:
+            error = _normalize_angle(self._recovery_target_yaw - self._yaw)
+            if abs(error) < 0.15:
+                self._publish_vel(MAX_LINEAR * 0.5, 0.0)
+            else:
+                angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
+                self._publish_vel(0.0, angular)
+        elif elapsed < 6.0:
+            if self._regions.front > FRONT_STOP:
+                self._publish_vel(MAX_LINEAR, 0.0)
+            else:
+                self._finish_recovery()
+        else:
+            self._finish_recovery()
 
     def _do_recovery_spin(self, elapsed: float) -> None:
         """Strategy 1: Rotate in place to rescan for paths (~270 deg)."""
