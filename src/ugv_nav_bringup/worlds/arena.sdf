@@ -356,6 +356,9 @@
     <!--   E>(5,1)S>(5,0)[GOAL]                                         -->
     <!-- ============================================================== -->
 
+    <!-- 38 SIGNS all on real walls — script-verified -->
+    <!-- PATH (20) + RECOVERY (16) + GOAL (big, 2) + TRAPS (2) = 40 total -->
+
     <!-- === SEGMENT 1: (0,0) go NORTH to (0,1) for aruco_0 === -->
     <!-- S1: FORWARD north on south boundary y=0, cell(0,0) -->
     <model name="s01_fwd_n"><static>true</static>
@@ -553,6 +556,108 @@
       <pose>3.0 5.92 0.25 0 0 3.1416</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
         <material><ambient>0.8 0 0 1</ambient><diffuse>0.8 0 0 1</diffuse></material>
+      </visual></link>
+    </model>
+
+    <!-- RECOVERY SIGNS (16): guide robot back to path from off-path cells -->
+    <!-- Row 0 off-path: go back west/north toward path -->
+    <model name="r01"><static>true</static>
+      <pose>5.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r02"><static>true</static>
+      <pose>8.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r03"><static>true</static>
+      <pose>6.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r04"><static>true</static>
+      <pose>4.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- Row 2 off-path: go south back to path -->
+    <model name="r05"><static>true</static>
+      <pose>0.08 5.5 0.25 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r06"><static>true</static>
+      <pose>1.92 2.5 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r07"><static>true</static>
+      <pose>11.92 5.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- Row 3 off-path: go south -->
+    <model name="r08"><static>true</static>
+      <pose>0.08 7.0 0.25 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r09"><static>true</static>
+      <pose>2.08 7.0 0.25 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r10"><static>true</static>
+      <pose>5.0 7.92 0.25 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r11"><static>true</static>
+      <pose>11.92 7.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- Row 4 off-path: go south -->
+    <model name="r12"><static>true</static>
+      <pose>0.08 9.0 0.25 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r13"><static>true</static>
+      <pose>3.92 9.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r14"><static>true</static>
+      <pose>7.92 9.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r15"><static>true</static>
+      <pose>11.92 9.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="r16"><static>true</static>
+      <pose>11.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
     </model>
 

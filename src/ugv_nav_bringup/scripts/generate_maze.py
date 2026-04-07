@@ -349,6 +349,9 @@ sdf = f'''<?xml version="1.0" ?>
     <!--   E>(5,1)S>(5,0)[GOAL]                                         -->
     <!-- ============================================================== -->
 
+    <!-- 38 SIGNS all on real walls — script-verified -->
+    <!-- PATH (20) + RECOVERY (16) + GOAL (big, 2) + TRAPS (2) = 40 total -->
+
     <!-- === SEGMENT 1: (0,0) go NORTH to (0,1) for aruco_0 === -->
     <!-- S1: FORWARD north on south boundary y=0, cell(0,0) -->
 {sign_model("s01_fwd_n", 1.0, 0.08, 0, 0.8, 0.8, facing="north")}
@@ -438,6 +441,28 @@ sdf = f'''<?xml version="1.0" ?>
 {sign_model("s18_left_trap", 0.08, 5.0, 0, 0.8, 0, facing="east")}
     <!-- S19: STOP near false goal on south face of wall y=6, walls_h[3][1]=T -->
 {sign_model("s19_stop", 3.0, 5.92, 0.8, 0, 0, facing="south")}
+
+    <!-- RECOVERY SIGNS (16): guide robot back to path from off-path cells -->
+    <!-- Row 0 off-path: go back west/north toward path -->
+{sign_model("r01", 5.0, 0.08, 0, 0.8, 0.8, facing="north")}
+{sign_model("r02", 8.0, 0.08, 0, 0.8, 0.8, facing="north")}
+{sign_model("r03", 6.0, 0.08, 0, 0.8, 0.8, facing="north")}
+{sign_model("r04", 4.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- Row 2 off-path: go south back to path -->
+{sign_model("r05", 0.08, 5.5, 0, 0.8, 0.8, facing="east")}
+{sign_model("r06", 1.92, 2.5, 0, 0.8, 0.8, facing="west")}
+{sign_model("r07", 11.92, 5.0, 0, 0.8, 0.8, facing="west")}
+    <!-- Row 3 off-path: go south -->
+{sign_model("r08", 0.08, 7.0, 0, 0.8, 0.8, facing="east")}
+{sign_model("r09", 2.08, 7.0, 0, 0.8, 0.8, facing="east")}
+{sign_model("r10", 5.0, 7.92, 0, 0.8, 0.8, facing="south")}
+{sign_model("r11", 11.92, 7.0, 0, 0.8, 0.8, facing="west")}
+    <!-- Row 4 off-path: go south -->
+{sign_model("r12", 0.08, 9.0, 0, 0.8, 0.8, facing="east")}
+{sign_model("r13", 3.92, 9.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("r14", 7.92, 9.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("r15", 11.92, 9.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("r16", 11.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>
