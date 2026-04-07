@@ -462,12 +462,12 @@ class MissionController(Node):
 
         direction = msg.data
 
-        # GOAL sign: all markers → MISSION_COMPLETE, else memorize
+        # GOAL sign: all markers → crawl toward goal sign, else memorize
         if direction == "GOAL":
             if self._visited_markers >= REQUIRED_MARKERS:
                 self.get_logger().info(
-                    "ALL MARKERS + GOAL → MISSION_COMPLETE!")
-                self._transition(State.MISSION_COMPLETE)
+                    "ALL MARKERS + GOAL → crawling to goal zone!")
+                self._transition(State.GOAL_SEEK)
             else:
                 self._goal_position = (self._x, self._y)
                 self._goal_room = _pos_to_room(self._x, self._y)
@@ -1191,73 +1191,15 @@ class MissionController(Node):
     # ------------------------------------------------------------------
 
     def _do_goal_seek(self) -> None:
-        """Navigate to goal after all markers collected.
-
-        Priority:
-        1. If goal position memorized → point-to-point navigation
-        2. If no goal memorized → follow signs (they lead to goal)
-        3. If stuck → Tremaux exploration to find the goal sign
-        """
-        # If goal position is memorized, navigate toward it
-        if self._goal_position is not None:
-            dx = self._goal_position[0] - self._x
-            dy = self._goal_position[1] - self._y
-            dist = math.hypot(dx, dy)
-
-            if dist < 1.0:
-                self.get_logger().info("Near memorized goal — driving forward")
-                self._goal_position = None
-                self._goal_room = None
-            else:
-                target_yaw = math.atan2(dy, dx)
-                yaw_error = _normalize_angle(target_yaw - self._yaw)
-
-                if self._regions.front < FRONT_STOP:
-                    linear, angular, e, i = _wall_follow_cmd(
-                        self._regions, self._prev_wall_error,
-                        self._wall_integral_error, self._wall_follow_side)
-                    self._prev_wall_error = e
-                    self._wall_integral_error = i
-                    self._publish_vel(linear, angular)
-                elif abs(yaw_error) > 0.3:
-                    angular = _clamp(yaw_error * 1.5, -MAX_ANGULAR, MAX_ANGULAR)
-                    self._publish_vel(0.0, angular)
-                else:
-                    angular = _clamp(yaw_error * 1.0, -MAX_ANGULAR, MAX_ANGULAR)
-                    self._publish_vel(MAX_LINEAR, angular)
-                return
-
-        # No memorized goal — explore to find the GOAL sign
-        # Use wall-following + Tremaux at junctions to systematically search
-        # Signs are still processed (GOAL sign triggers MISSION_COMPLETE in _sign_cb)
-        r = self._regions
-
-        # Thin obstacle dodge
-        if self._is_thin_obstacle(r):
-            self._do_dodge_obstacle()
+        """Slowly crawl forward toward the GOAL sign until gentle bump."""
+        if self._regions.front < 0.15:
+            # Gentle bump — we're at the goal zone wall
+            self.get_logger().info(
+                "MISSION COMPLETE — reached goal zone!")
+            self._transition(State.MISSION_COMPLETE)
             return
-
-        # At a junction, use Tremaux to pick unexplored paths
-        now = time.monotonic()
-        if (now - self._last_junction_time > JUNCTION_COOLDOWN
-                and self._detect_junction()):
-            chosen = self._tremaux_choose()
-            if chosen is not None:
-                self._register_junction(chosen)
-                target = _cardinal_to_yaw(chosen)
-                error = _normalize_angle(target - self._yaw)
-                if abs(error) > 0.2:
-                    angular = _clamp(error * 2.0, -MAX_ANGULAR, MAX_ANGULAR)
-                    self._publish_vel(0.0, angular)
-                    return
-
-        # Default: wall-follow to explore
-        linear, angular, new_error, new_integral = _wall_follow_cmd(
-            r, self._prev_wall_error,
-            self._wall_integral_error, self._wall_follow_side)
-        self._prev_wall_error = new_error
-        self._wall_integral_error = new_integral
-        self._publish_vel(linear, angular)
+        # Crawl slowly forward (camera just saw the GOAL sign ahead)
+        self._publish_vel(0.15, 0.0)
 
     # ------------------------------------------------------------------
     #  RECOVERY (escalating strategies)
