@@ -464,10 +464,12 @@ class MissionController(Node):
 
         # GOAL sign: all markers → MISSION_COMPLETE, else memorize
         if direction == "GOAL":
+            # Always memorize goal position (update with latest sighting)
+            self._goal_position = (self._x, self._y)
             if self._visited_markers >= REQUIRED_MARKERS:
                 self.get_logger().info(
-                    "ALL MARKERS + GOAL → MISSION_COMPLETE!")
-                self._transition(State.MISSION_COMPLETE)
+                    "ALL MARKERS + GOAL → driving to goal zone!")
+                self._transition(State.GOAL_SEEK)
             else:
                 self._goal_position = (self._x, self._y)
                 self._goal_room = _pos_to_room(self._x, self._y)
@@ -1204,10 +1206,11 @@ class MissionController(Node):
             dy = self._goal_position[1] - self._y
             dist = math.hypot(dx, dy)
 
-            if dist < 1.0:
-                self.get_logger().info("Near memorized goal — driving forward")
-                self._goal_position = None
-                self._goal_room = None
+            if dist < 0.5:
+                self.get_logger().info(
+                    "MISSION COMPLETE — arrived at goal zone!")
+                self._transition(State.MISSION_COMPLETE)
+                return
             else:
                 target_yaw = math.atan2(dy, dx)
                 yaw_error = _normalize_angle(target_yaw - self._yaw)
