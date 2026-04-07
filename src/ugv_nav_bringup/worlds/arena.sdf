@@ -68,24 +68,14 @@
       </visual></link>
     </model>
 
-    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) — large floor + north wall stripe -->
-    <!-- NO south wall (GOAL sign is there), NO east wall (boundary wall is there) -->
-    <!-- Only north wall stripe so robot sees gold approaching from cell(5,1) -->
+    <!-- TRUE GOAL (gold) cell(5,0) center=(11,1) — floor only, no walls blocking -->
     <model name="true_goal"><static>true</static>
       <pose>11 1 0.005 0 0 0</pose>
-      <link name="l">
-        <visual name="floor"><geometry><box>
-          <size>2.0 2.0 0.01</size></box></geometry>
-          <material><ambient>0.9 0.7 0.1 1</ambient>
-            <diffuse>0.9 0.7 0.1 1</diffuse></material>
-        </visual>
-        <visual name="north_stripe"><geometry><box>
-          <size>1.8 0.01 0.5</size></box></geometry>
-          <pose>0 0.92 0.25 0 0 0</pose>
-          <material><ambient>0.9 0.7 0.1 1</ambient>
-            <diffuse>0.9 0.7 0.1 1</diffuse></material>
-        </visual>
-      </link>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>2.0 2.0 0.01</size></box></geometry>
+        <material><ambient>0.9 0.7 0.1 1</ambient>
+          <diffuse>0.9 0.7 0.1 1</diffuse></material>
+      </visual></link>
     </model>
 
     <!-- FALSE GOAL cell(4,3) center=(9,7) -->
