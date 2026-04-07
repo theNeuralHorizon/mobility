@@ -309,9 +309,9 @@ sdf = f'''<?xml version="1.0" ?>
       </visual></link>
     </model>
 
-    <!-- FALSE GOAL cell(4,3) center=(9,7) -->
+    <!-- FALSE GOAL — moved to top-left cell(0,4) center=(1,9) -->
     <model name="false_goal"><static>true</static>
-      <pose>9 7 0.005 0 0 0</pose>
+      <pose>1 9 0.005 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box>
         <size>1.6 1.6 0.01</size></box></geometry>
         <material><ambient>0.85 0.65 0.1 1</ambient>
@@ -349,76 +349,41 @@ sdf = f'''<?xml version="1.0" ?>
     <!--   E>(5,1)S>(5,0)[GOAL]                                         -->
     <!-- ============================================================== -->
 
-    <!-- 38 SIGNS all on real walls — script-verified -->
-    <!-- PATH (20) + RECOVERY (16) + GOAL (big, 2) + TRAPS (2) = 40 total -->
+    <!-- 23 SIGNS: path (20) + goal (2) + trap (1). No recovery clutter. -->
 
-    <!-- === SEGMENT 1: (0,0) go NORTH to (0,1) for aruco_0 === -->
-    <!-- S1: FORWARD north on south boundary y=0, cell(0,0) -->
-{sign_model("s01_fwd_n", 1.0, 0.08, 0, 0.8, 0.8, facing="north")}
-    <!-- S2: extra FORWARD north on left boundary x=0, cell(0,0) -->
-{sign_model("s02_fwd_n", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
+    <!-- (0,0) NORTH to aruco_0 -->
+{sign_model("s01_fwd", 1.0, 0.08, 0, 0.8, 0.8, facing="north")}
+{sign_model("s02_fwd", 0.08, 1.0, 0, 0.8, 0.8, facing="east")}
+    <!-- (0,0) EAST after return -->
+{sign_model("s03_right", 0.5, 0.08, 0, 0, 0.8, facing="north")}
+{sign_model("s04_fwd", 2.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- (1,0) NORTH -->
+{sign_model("s05_fwd", 3.92, 1.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("s05b_fwd", 3.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- (1,1) EAST to aruco_1 -->
+{sign_model("s06_right", 2.08, 3.0, 0, 0, 0.8, facing="east")}
+    <!-- (2,1) NORTH -->
+{sign_model("s07_fwd", 5.0, 2.08, 0, 0.8, 0.8, facing="north")}
+    <!-- (2,2) EAST -->
+{sign_model("s08_fwd", 4.08, 5.0, 0, 0.8, 0.8, facing="east")}
+    <!-- (3,2) EAST to aruco_3 -->
+{sign_model("s09_fwd", 4.08, 4.5, 0, 0.8, 0.8, facing="east")}
+    <!-- (4,2) SOUTH -->
+{sign_model("s10_right", 9.0, 5.92, 0, 0, 0.8, facing="south")}
+    <!-- (4,1) WEST to aruco_2 -->
+{sign_model("s11_left", 9.0, 2.08, 0, 0.8, 0, facing="north")}
+    <!-- (3,1) return EAST -->
+{sign_model("s12_fwd", 7.92, 1.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("s12b_fwd", 7.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- (4,1) EAST to (5,1) -->
+{sign_model("s13_right", 9.0, 0.08, 0, 0, 0.8, facing="north")}
+{sign_model("s13b_fwd", 10.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- (5,1) SOUTH to goal -->
+{sign_model("s14_fwd", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
+{sign_model("s15_fwd", 11.0, 3.92, 0, 0.8, 0.8, facing="south")}
+{sign_model("s15b_fwd", 11.92, 2.0, 0, 0.8, 0.8, facing="west")}
 
-    <!-- === SEGMENT 2: (0,1) return south, then east === -->
-    <!-- S3: RIGHT east on south boundary y=0, cell(0,0) — after returning from dead end -->
-{sign_model("s03_right_e", 0.5, 0.08, 0, 0, 0.8, facing="north")}
-
-    <!-- === SEGMENT 3: (0,0) go EAST to (1,0) === -->
-    <!-- S4: FORWARD east on south boundary y=0 -->
-{sign_model("s04_fwd_e", 2.0, 0.08, 0, 0.8, 0.8, facing="north")}
-
-    <!-- === SEGMENT 4: (1,0) go NORTH to (1,1) === -->
-    <!-- S5: FORWARD north on west face of wall x=4, walls_v[0][2]=T -->
-{sign_model("s05_fwd_n", 3.92, 1.0, 0, 0.8, 0.8, facing="west")}
-    <!-- S5b: extra FORWARD north on south boundary y=0 in cell(1,0) -->
-{sign_model("s05b_fwd_n", 3.0, 0.08, 0, 0.8, 0.8, facing="north")}
-
-    <!-- === SEGMENT 5: (1,1) go EAST to (2,1) for aruco_1 === -->
-    <!-- S6: RIGHT east on east face of wall x=2, walls_v[1][1]=T -->
-{sign_model("s06_right_e", 2.08, 3.0, 0, 0, 0.8, facing="east")}
-
-    <!-- === SEGMENT 6: (2,1) go NORTH to (2,2) === -->
-    <!-- S7: FORWARD north on north face of wall y=2, walls_h[1][2]=T -->
-{sign_model("s07_fwd_n", 5.0, 2.08, 0, 0.8, 0.8, facing="north")}
-    <!-- S7b: extra FORWARD north on left boundary x=0 in cell(0,2) area -->
-{sign_model("s07b_fwd_n", 0.08, 4.5, 0, 0.8, 0.8, facing="east")}
-
-    <!-- === SEGMENT 7: (2,2) go EAST to (3,2) === -->
-    <!-- S8: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
-{sign_model("s08_fwd_e", 4.08, 5.0, 0, 0.8, 0.8, facing="east")}
-
-    <!-- === SEGMENT 8: (3,2) go EAST to (4,2) for aruco_3 === -->
-    <!-- S9: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
-{sign_model("s09_fwd_e", 4.08, 4.5, 0, 0.8, 0.8, facing="east")}
-
-    <!-- === SEGMENT 9: (4,2) go SOUTH to (4,1) === -->
-    <!-- S10: RIGHT south on south face of wall y=6, walls_h[3][4]=T -->
-{sign_model("s10_right_s", 9.0, 5.92, 0, 0, 0.8, facing="south")}
-
-    <!-- === SEGMENT 10: (4,1) go WEST to (3,1) for aruco_2 === -->
-    <!-- S11: LEFT west on north face of wall y=2, walls_h[1][4]=T -->
-{sign_model("s11_left_w", 9.0, 2.08, 0, 0.8, 0, facing="north")}
-
-    <!-- === SEGMENT 11: (3,1) return EAST to (4,1) === -->
-    <!-- S12: FORWARD east on west face of wall x=8, walls_v[0][4]=T -->
-{sign_model("s12_fwd_e", 7.92, 1.0, 0, 0.8, 0.8, facing="west")}
-    <!-- S12b: extra FORWARD east on south boundary y=0 in cell(3,0) -->
-{sign_model("s12b_fwd_e", 7.0, 0.08, 0, 0.8, 0.8, facing="north")}
-
-    <!-- === SEGMENT 12: (4,1) go EAST to (5,1) === -->
-    <!-- S13: RIGHT east on south boundary y=0 -->
-{sign_model("s13_right_e", 9.0, 0.08, 0, 0, 0.8, facing="north")}
-    <!-- S13b: extra FORWARD east on south boundary y=0, cell(5,0) area -->
-{sign_model("s13b_fwd_e", 10.0, 0.08, 0, 0.8, 0.8, facing="north")}
-
-    <!-- === SEGMENT 13: (5,1) go SOUTH to (5,0) GOAL === -->
-    <!-- S14: FORWARD south on right boundary x=12, cell(5,1) -->
-{sign_model("s14_fwd_s", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
-    <!-- S15: FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
-{sign_model("s15_fwd_s", 11.0, 3.92, 0, 0.8, 0.8, facing="south")}
-    <!-- S15b: extra FORWARD south on right boundary x=12, between (5,1) and (5,0) -->
-{sign_model("s15b_fwd_s", 11.92, 2.0, 0, 0.8, 0.8, facing="west")}
-
-    <!-- === GOAL markers — BIG orange panels === -->
+    <!-- GOAL — BIG orange panels on 2 walls -->
     <model name="s16_goal"><static>true</static>
       <pose>11.0 0.08 0.30 0 0 0</pose>
       <link name="l"><visual name="v"><geometry><box>
@@ -436,33 +401,8 @@ sdf = f'''<?xml version="1.0" ?>
       </visual></link>
     </model>
 
-    <!-- === TRAPS === -->
-    <!-- S18: LEFT misleading on left boundary x=0, cell(0,2) -->
-{sign_model("s18_left_trap", 0.08, 5.0, 0, 0.8, 0, facing="east")}
-    <!-- S19: STOP near false goal on south face of wall y=6, walls_h[3][1]=T -->
-{sign_model("s19_stop", 3.0, 5.92, 0.8, 0, 0, facing="south")}
-
-    <!-- RECOVERY SIGNS (16): guide robot back to path from off-path cells -->
-    <!-- Row 0 off-path: go back west/north toward path -->
-{sign_model("r01", 5.0, 0.08, 0, 0.8, 0.8, facing="north")}
-{sign_model("r02", 8.0, 0.08, 0, 0.8, 0.8, facing="north")}
-{sign_model("r03", 6.0, 0.08, 0, 0.8, 0.8, facing="north")}
-{sign_model("r04", 4.0, 0.08, 0, 0.8, 0.8, facing="north")}
-    <!-- Row 2 off-path: go south back to path -->
-{sign_model("r05", 0.08, 5.5, 0, 0.8, 0.8, facing="east")}
-{sign_model("r06", 1.92, 2.5, 0, 0.8, 0.8, facing="west")}
-{sign_model("r07", 11.92, 5.0, 0, 0.8, 0.8, facing="west")}
-    <!-- Row 3 off-path: go south -->
-{sign_model("r08", 0.08, 7.0, 0, 0.8, 0.8, facing="east")}
-{sign_model("r09", 2.08, 7.0, 0, 0.8, 0.8, facing="east")}
-{sign_model("r10", 5.0, 7.92, 0, 0.8, 0.8, facing="south")}
-{sign_model("r11", 11.92, 7.0, 0, 0.8, 0.8, facing="west")}
-    <!-- Row 4 off-path: go south -->
-{sign_model("r12", 0.08, 9.0, 0, 0.8, 0.8, facing="east")}
-{sign_model("r13", 3.92, 9.0, 0, 0.8, 0.8, facing="west")}
-{sign_model("r14", 7.92, 9.0, 0, 0.8, 0.8, facing="west")}
-{sign_model("r15", 11.92, 9.0, 0, 0.8, 0.8, facing="west")}
-{sign_model("r16", 11.0, 0.08, 0, 0.8, 0.8, facing="north")}
+    <!-- TRAP: STOP near new false goal (top-left) -->
+{sign_model("s18_stop", 1.0, 7.92, 0.8, 0, 0, facing="south")}
 
     <!-- Static obstacles — visual only (NO collision to prevent robot flipping) -->
     <model name="obs1"><static>true</static>
