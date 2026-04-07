@@ -392,7 +392,7 @@
     </model>
 
     <!-- === SEGMENT 3: (0,0) go EAST to (1,0) === -->
-    <!-- S4: FORWARD east on south boundary y=0, between cells -->
+    <!-- S4: FORWARD east on south boundary y=0 -->
     <model name="s04_fwd_e"><static>true</static>
       <pose>2.0 0.08 0.25 0 0 0.0000</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
@@ -404,6 +404,13 @@
     <!-- S5: FORWARD north on west face of wall x=4, walls_v[0][2]=T -->
     <model name="s05_fwd_n"><static>true</static>
       <pose>3.92 1.0 0.25 0 0 -1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- S5b: extra FORWARD north on south boundary y=0 in cell(1,0) -->
+    <model name="s05b_fwd_n"><static>true</static>
+      <pose>3.0 0.08 0.25 0 0 0.0000</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
@@ -426,6 +433,13 @@
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
     </model>
+    <!-- S7b: extra FORWARD north on left boundary x=0 in cell(0,2) area -->
+    <model name="s07b_fwd_n"><static>true</static>
+      <pose>0.08 4.5 0.25 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
 
     <!-- === SEGMENT 7: (2,2) go EAST to (3,2) === -->
     <!-- S8: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
@@ -437,7 +451,7 @@
     </model>
 
     <!-- === SEGMENT 8: (3,2) go EAST to (4,2) for aruco_3 === -->
-    <!-- S9: FORWARD east on east face of wall x=4, walls_v[2][2]=T (avoid aruco_2 on y=4 wall) -->
+    <!-- S9: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
     <model name="s09_fwd_e"><static>true</static>
       <pose>4.08 4.5 0.25 0 0 1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
@@ -471,13 +485,27 @@
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
     </model>
+    <!-- S12b: extra FORWARD east on south boundary y=0 in cell(3,0) -->
+    <model name="s12b_fwd_e"><static>true</static>
+      <pose>7.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
 
     <!-- === SEGMENT 12: (4,1) go EAST to (5,1) === -->
-    <!-- S13: RIGHT east on south boundary y=0, cell(4,0) area -->
+    <!-- S13: RIGHT east on south boundary y=0 -->
     <model name="s13_right_e"><static>true</static>
       <pose>9.0 0.08 0.25 0 0 0.0000</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
         <material><ambient>0 0 0.8 1</ambient><diffuse>0 0 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- S13b: extra FORWARD east on south boundary y=0, cell(5,0) area -->
+    <model name="s13b_fwd_e"><static>true</static>
+      <pose>10.0 0.08 0.25 0 0 0.0000</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
     </model>
 
@@ -489,9 +517,16 @@
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>
     </model>
-    <!-- S15: extra FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
+    <!-- S15: FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
     <model name="s15_fwd_s"><static>true</static>
       <pose>11.0 3.92 0.25 0 0 3.1416</pose>
+      <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
+        <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
+      </visual></link>
+    </model>
+    <!-- S15b: extra FORWARD south on right boundary x=12, between (5,1) and (5,0) -->
+    <model name="s15b_fwd_s"><static>true</static>
+      <pose>11.92 2.0 0.25 0 0 -1.5708</pose>
       <link name="l"><visual name="v"><geometry><box><size>0.60 0.01 0.50</size></box></geometry>
         <material><ambient>0 0.8 0.8 1</ambient><diffuse>0 0.8 0.8 1</diffuse></material>
       </visual></link>

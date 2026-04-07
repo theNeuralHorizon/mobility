@@ -370,12 +370,14 @@ sdf = f'''<?xml version="1.0" ?>
 {sign_model("s03_right_e", 0.5, 0.08, 0, 0, 0.8, facing="north")}
 
     <!-- === SEGMENT 3: (0,0) go EAST to (1,0) === -->
-    <!-- S4: FORWARD east on south boundary y=0, between cells -->
+    <!-- S4: FORWARD east on south boundary y=0 -->
 {sign_model("s04_fwd_e", 2.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- === SEGMENT 4: (1,0) go NORTH to (1,1) === -->
     <!-- S5: FORWARD north on west face of wall x=4, walls_v[0][2]=T -->
 {sign_model("s05_fwd_n", 3.92, 1.0, 0, 0.8, 0.8, facing="west")}
+    <!-- S5b: extra FORWARD north on south boundary y=0 in cell(1,0) -->
+{sign_model("s05b_fwd_n", 3.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- === SEGMENT 5: (1,1) go EAST to (2,1) for aruco_1 === -->
     <!-- S6: RIGHT east on east face of wall x=2, walls_v[1][1]=T -->
@@ -384,13 +386,15 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- === SEGMENT 6: (2,1) go NORTH to (2,2) === -->
     <!-- S7: FORWARD north on north face of wall y=2, walls_h[1][2]=T -->
 {sign_model("s07_fwd_n", 5.0, 2.08, 0, 0.8, 0.8, facing="north")}
+    <!-- S7b: extra FORWARD north on left boundary x=0 in cell(0,2) area -->
+{sign_model("s07b_fwd_n", 0.08, 4.5, 0, 0.8, 0.8, facing="east")}
 
     <!-- === SEGMENT 7: (2,2) go EAST to (3,2) === -->
     <!-- S8: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
 {sign_model("s08_fwd_e", 4.08, 5.0, 0, 0.8, 0.8, facing="east")}
 
     <!-- === SEGMENT 8: (3,2) go EAST to (4,2) for aruco_3 === -->
-    <!-- S9: FORWARD east on east face of wall x=4, walls_v[2][2]=T (avoid aruco_2 on y=4 wall) -->
+    <!-- S9: FORWARD east on east face of wall x=4, walls_v[2][2]=T -->
 {sign_model("s09_fwd_e", 4.08, 4.5, 0, 0.8, 0.8, facing="east")}
 
     <!-- === SEGMENT 9: (4,2) go SOUTH to (4,1) === -->
@@ -404,16 +408,22 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- === SEGMENT 11: (3,1) return EAST to (4,1) === -->
     <!-- S12: FORWARD east on west face of wall x=8, walls_v[0][4]=T -->
 {sign_model("s12_fwd_e", 7.92, 1.0, 0, 0.8, 0.8, facing="west")}
+    <!-- S12b: extra FORWARD east on south boundary y=0 in cell(3,0) -->
+{sign_model("s12b_fwd_e", 7.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- === SEGMENT 12: (4,1) go EAST to (5,1) === -->
-    <!-- S13: RIGHT east on south boundary y=0, cell(4,0) area -->
+    <!-- S13: RIGHT east on south boundary y=0 -->
 {sign_model("s13_right_e", 9.0, 0.08, 0, 0, 0.8, facing="north")}
+    <!-- S13b: extra FORWARD east on south boundary y=0, cell(5,0) area -->
+{sign_model("s13b_fwd_e", 10.0, 0.08, 0, 0.8, 0.8, facing="north")}
 
     <!-- === SEGMENT 13: (5,1) go SOUTH to (5,0) GOAL === -->
     <!-- S14: FORWARD south on right boundary x=12, cell(5,1) -->
 {sign_model("s14_fwd_s", 11.92, 3.0, 0, 0.8, 0.8, facing="west")}
-    <!-- S15: extra FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
+    <!-- S15: FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
 {sign_model("s15_fwd_s", 11.0, 3.92, 0, 0.8, 0.8, facing="south")}
+    <!-- S15b: extra FORWARD south on right boundary x=12, between (5,1) and (5,0) -->
+{sign_model("s15b_fwd_s", 11.92, 2.0, 0, 0.8, 0.8, facing="west")}
 
     <!-- === GOAL markers — BIG orange panels === -->
     <model name="s16_goal"><static>true</static>
