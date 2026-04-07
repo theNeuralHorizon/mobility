@@ -148,10 +148,10 @@ def sign_model(
     r: float, g: float, b: float,
     facing: str = "south",
 ) -> str:
-    """Colored sign panel flush on wall surface — no post, no collision.
+    """Large colored sign panel flush on wall surface — no post, no collision.
 
-    Same approach as aruco_model: thin box (0.25 wide x 0.01 thin x 0.20 tall)
-    at z=0.10 (camera height). Robot cannot collide with it.
+    Big panel (0.60 wide x 0.01 thin x 0.50 tall) at z=0.25 for maximum
+    visibility. Robot cannot collide with it (visual only).
 
     facing: direction the colored face points toward
     """
@@ -164,9 +164,9 @@ def sign_model(
 
     return (
         f'    <model name="{name}"><static>true</static>\n'
-        f'      <pose>{x} {y} 0.10 0 0 {yaw:.4f}</pose>\n'
+        f'      <pose>{x} {y} 0.25 0 0 {yaw:.4f}</pose>\n'
         f'      <link name="l"><visual name="v"><geometry><box>'
-        f'<size>0.25 0.01 0.20</size></box></geometry>\n'
+        f'<size>0.60 0.01 0.50</size></box></geometry>\n'
         f'        <material><ambient>{r} {g} {b} 1</ambient>'
         f'<diffuse>{r} {g} {b} 1</diffuse></material>\n'
         f'      </visual></link>\n'
@@ -415,11 +415,23 @@ sdf = f'''<?xml version="1.0" ?>
     <!-- S15: extra FORWARD south on south face of wall y=4, walls_h[2][5]=T -->
 {sign_model("s15_fwd_s", 11.0, 3.92, 0, 0.8, 0.8, facing="south")}
 
-    <!-- === GOAL marker === -->
-    <!-- S16: GOAL on south boundary y=0, cell(5,0) — large orange -->
-{sign_model("s16_goal", 11.0, 0.08, 0.9, 0.5, 0, facing="north")}
-    <!-- S17: extra GOAL on right boundary x=12, cell(5,0) -->
-{sign_model("s17_goal2", 11.92, 1.0, 0.9, 0.5, 0, facing="west")}
+    <!-- === GOAL markers — BIG orange panels === -->
+    <model name="s16_goal"><static>true</static>
+      <pose>11.0 0.08 0.30 0 0 0</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.5 0.01 0.60</size></box></geometry>
+        <material><ambient>0.9 0.5 0 1</ambient>
+          <diffuse>0.9 0.5 0 1</diffuse></material>
+      </visual></link>
+    </model>
+    <model name="s17_goal2"><static>true</static>
+      <pose>11.92 1.0 0.30 0 0 1.5708</pose>
+      <link name="l"><visual name="v"><geometry><box>
+        <size>1.5 0.01 0.60</size></box></geometry>
+        <material><ambient>0.9 0.5 0 1</ambient>
+          <diffuse>0.9 0.5 0 1</diffuse></material>
+      </visual></link>
+    </model>
 
     <!-- === TRAPS === -->
     <!-- S18: LEFT misleading on left boundary x=0, cell(0,2) -->
