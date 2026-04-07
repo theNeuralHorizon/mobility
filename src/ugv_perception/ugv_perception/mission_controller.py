@@ -906,7 +906,13 @@ class MissionController(Node):
             f"({self._junction_log[jk]})")
 
     def _tremaux_choose(self) -> str | None:
-        """Choose least-visited exit at current junction. Returns N/S/E/W or None."""
+        """Choose least-visited exit at current junction.
+
+        Early bias (first 90s): prefer N > W > E > S to push robot toward
+        the upper maze section where aruco_2 and aruco_3 are located.
+        This eliminates non-determinism that caused some runs to go
+        east/south and never reach the upper markers.
+        """
         jk = self._find_junction(self._x, self._y)
         if jk is None:
             jk = _pos_to_junction_key(self._x, self._y)
@@ -922,7 +928,15 @@ class MissionController(Node):
                 candidates.append((d, log[d], lidar[d]))
         if not candidates:
             return None
-        candidates.sort(key=lambda c: (c[1], -c[2]))
+
+        elapsed = time.monotonic() - self._start_time
+        if elapsed < 90.0:
+            # Early phase: prefer N > W to reach upper maze reliably
+            priority = {"N": 0, "W": 1, "E": 2, "S": 3}
+            candidates.sort(key=lambda c: (c[1], priority.get(c[0], 2)))
+        else:
+            # Normal Tremaux: prefer least-visited, then most open
+            candidates.sort(key=lambda c: (c[1], -c[2]))
         return candidates[0][0]
 
     # ------------------------------------------------------------------
