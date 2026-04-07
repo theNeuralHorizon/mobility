@@ -456,8 +456,8 @@ class MissionController(Node):
                            State.SIGN_FOLLOW):
             return
 
-        # 10s cooldown between following any sign
-        if time.monotonic() - self._last_sign_follow_time < 10.0:
+        # 5s cooldown between following any sign (reduced from 10s to catch more signs)
+        if time.monotonic() - self._last_sign_follow_time < 5.0:
             return
 
         direction = msg.data
@@ -908,10 +908,10 @@ class MissionController(Node):
     def _tremaux_choose(self) -> str | None:
         """Choose least-visited exit at current junction.
 
-        Early bias (first 90s): prefer N > W > E > S to push robot toward
-        the upper maze section where aruco_2 and aruco_3 are located.
-        This eliminates non-determinism that caused some runs to go
-        east/south and never reach the upper markers.
+        Tie-breaker: when multiple exits have equal visit count,
+        prefer the direction the robot is NOT coming from (avoid
+        going back the way we came). This makes exploration more
+        forward-biased and reduces looping.
         """
         jk = self._find_junction(self._x, self._y)
         if jk is None:
@@ -922,21 +922,19 @@ class MissionController(Node):
         heading = _snap_to_cardinal(self._yaw)
         lidar = self._get_cardinal_lidar(heading)
 
+        # Direction we came from (penalize going back)
+        reverse = {"N": "S", "S": "N", "E": "W", "W": "E"}[heading]
+
         candidates = []
         for d in ("N", "S", "E", "W"):
             if lidar.get(d, 0.0) > WALL_FAR and log[d] < TREMAUX_MAX_COUNT:
-                candidates.append((d, log[d], lidar[d]))
+                # Penalize reverse direction so we prefer forward exploration
+                penalty = 1 if d == reverse else 0
+                candidates.append((d, log[d], penalty, lidar[d]))
         if not candidates:
             return None
-
-        elapsed = time.monotonic() - self._start_time
-        if elapsed < 90.0:
-            # Early phase: prefer N > W to reach upper maze reliably
-            priority = {"N": 0, "W": 1, "E": 2, "S": 3}
-            candidates.sort(key=lambda c: (c[1], priority.get(c[0], 2)))
-        else:
-            # Normal Tremaux: prefer least-visited, then most open
-            candidates.sort(key=lambda c: (c[1], -c[2]))
+        # Sort: least visited → not-reverse → most open LiDAR
+        candidates.sort(key=lambda c: (c[1], c[2], -c[3]))
         return candidates[0][0]
 
     # ------------------------------------------------------------------
